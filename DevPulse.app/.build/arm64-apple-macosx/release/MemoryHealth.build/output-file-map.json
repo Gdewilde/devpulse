@@ -1,0 +1,22 @@
+{
+  "": {
+    "dependencies": "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/MemoryHealth.d",
+    "object": "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/MemoryHealth.o",
+    "swift-dependencies": "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/master.swiftdeps"
+  },
+  "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/MemoryHealthApp.swift": {
+    "object": "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/MemoryHealthApp.swift.o",
+    "swiftmodule": "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/MemoryHealthApp~partial.swiftmodule",
+    "swift-dependencies": "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/MemoryHealthApp.swiftdeps"
+  },
+  "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/MemoryStats.swift": {
+    "object": "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/MemoryStats.swift.o",
+    "swiftmodule": "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/MemoryStats~partial.swiftmodule",
+    "swift-dependencies": "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/MemoryStats.swiftdeps"
+  },
+  "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/TopProcesses.swift": {
+    "object": "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/TopProcesses.swift.o",
+    "swiftmodule": "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/TopProcesses~partial.swiftmodule",
+    "swift-dependencies": "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/TopProcesses.swiftdeps"
+  }
+}

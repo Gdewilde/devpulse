@@ -1,0 +1,66 @@
+client:
+  name: basic
+  file-system: device-agnostic
+tools: {}
+targets:
+  "MemoryHealth-release.exe": ["<MemoryHealth-release.exe>"]
+  "MemoryHealth-release.module": ["<MemoryHealth-release.module>"]
+  "PackageStructure": ["<PackageStructure>"]
+  "main": ["<MemoryHealth-release.exe>","<MemoryHealth-release.module>"]
+  "test": ["<MemoryHealth-release.exe>","<MemoryHealth-release.module>"]
+default: "main"
+nodes:
+  "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+commands:
+  "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/MemoryHealthApp.swift","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/MemoryStats.swift","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/TopProcesses.swift"]
+    outputs: ["/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/sources"]
+    description: "Write auxiliary file /Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/sources"
+
+  "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.product/Objects.LinkFileList":
+    tool: write-auxiliary-file
+    inputs: ["<link-file-list>","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/MemoryHealthApp.swift.o","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/MemoryStats.swift.o","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/TopProcesses.swift.o"]
+    outputs: ["/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.product/Objects.LinkFileList"]
+    description: "Write auxiliary file /Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.product/Objects.LinkFileList"
+
+  "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/swift-version--1AB21518FC5DEDBE.txt":
+    tool: write-auxiliary-file
+    inputs: ["<swift-get-version>","/Library/Developer/CommandLineTools/usr/bin/swiftc"]
+    outputs: ["/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/swift-version--1AB21518FC5DEDBE.txt"]
+    always-out-of-date: "true"
+    description: "Write auxiliary file /Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/swift-version--1AB21518FC5DEDBE.txt"
+
+  "<MemoryHealth-release.exe>":
+    tool: phony
+    inputs: ["/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth"]
+    outputs: ["<MemoryHealth-release.exe>"]
+
+  "<MemoryHealth-release.module>":
+    tool: phony
+    inputs: ["/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/MemoryHealthApp.swift.o","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/MemoryStats.swift.o","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/TopProcesses.swift.o","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.swiftmodule"]
+    outputs: ["<MemoryHealth-release.module>"]
+
+  "C.MemoryHealth-release.exe":
+    tool: shell
+    inputs: ["/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/MemoryHealthApp.swift.o","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/MemoryStats.swift.o","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/TopProcesses.swift.o","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.product/Objects.LinkFileList"]
+    outputs: ["/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth"]
+    description: "Linking ./.build/arm64-apple-macosx/release/MemoryHealth"
+    args: ["/Library/Developer/CommandLineTools/usr/bin/swiftc","-L","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release","-o","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth","-module-name","MemoryHealth","-emit-executable","-Xlinker","-dead_strip","-Xlinker","-alias","-Xlinker","_MemoryHealth_main","-Xlinker","_main","-Xlinker","-rpath","-Xlinker","@loader_path","@/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.product/Objects.LinkFileList","-target","arm64-apple-macosx14.0","-sdk","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-g"]
+
+  "C.MemoryHealth-release.module":
+    tool: shell
+    inputs: ["/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/MemoryHealthApp.swift","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/MemoryStats.swift","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/TopProcesses.swift","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/swift-version--1AB21518FC5DEDBE.txt","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/sources"]
+    outputs: ["/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/MemoryHealthApp.swift.o","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/MemoryStats.swift.o","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/TopProcesses.swift.o","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.swiftmodule"]
+    description: "Compiling Swift Module 'MemoryHealth' (3 sources)"
+    args: ["/Library/Developer/CommandLineTools/usr/bin/swiftc","-module-name","MemoryHealth","-emit-dependencies","-emit-module","-emit-module-path","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.swiftmodule","-output-file-map","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/output-file-map.json","-whole-module-optimization","-num-threads","16","-c","@/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/MemoryHealth.build/sources","-I","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release","-target","arm64-apple-macosx14.0","-swift-version","5","-O","-j16","-DSWIFT_PACKAGE","-module-cache-path","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/release/ModuleCache","-parseable-output","-Xfrontend","-entry-point-function-name","-Xfrontend","MemoryHealth_main","-sdk","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-g","-Xcc","-isysroot","-Xcc","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-Xcc","-fPIC","-Xcc","-g","-package-name","memoryhealth_app"]
+
+  "PackageStructure":
+    tool: package-structure-tool
+    inputs: ["/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Package.swift","/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Package.resolved"]
+    outputs: ["<PackageStructure>"]
+    description: "Planning build"
+    allow-missing-inputs: true
+

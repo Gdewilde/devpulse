@@ -1,0 +1,254 @@
+{
+  "builtTestProducts" : [
+
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.MemoryHealth-debug.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth.build/sources",
+      "importPath" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/MemoryHealthApp.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/MemoryStats.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/TopProcesses.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth.build/sources"
+        }
+      ],
+      "isLibrary" : false,
+      "moduleName" : "MemoryHealth",
+      "moduleOutputPath" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth.swiftmodule",
+      "objects" : [
+        "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth.build/MemoryHealthApp.swift.o",
+        "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth.build/MemoryStats.swift.o",
+        "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth.build/TopProcesses.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-swift-version",
+        "5",
+        "-enable-batch-mode",
+        "-index-store-path",
+        "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j16",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-module-cache-path",
+        "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-Xfrontend",
+        "-entry-point-function-name",
+        "-Xfrontend",
+        "MemoryHealth_main",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "memoryhealth_app"
+      ],
+      "outputFileMapPath" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth.build/MemoryHealthApp.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth.build/MemoryStats.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth.build/TopProcesses.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth.swiftmodule"
+        }
+      ],
+      "sources" : [
+        "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/MemoryHealthApp.swift",
+        "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/MemoryStats.swift",
+        "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/TopProcesses.swift"
+      ],
+      "tempsPath" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "MemoryHealth" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "MemoryHealth",
+      "-package-name",
+      "memoryhealth_app",
+      "-incremental",
+      "-c",
+      "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/MemoryHealthApp.swift",
+      "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/MemoryStats.swift",
+      "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/TopProcesses.swift",
+      "-I",
+      "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-swift-version",
+      "5",
+      "-enable-batch-mode",
+      "-index-store-path",
+      "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j16",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-module-cache-path",
+      "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-Xfrontend",
+      "-entry-point-function-name",
+      "-Xfrontend",
+      "MemoryHealth_main",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "memoryhealth_app",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "MemoryHealth" : [
+
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+
+  },
+  "writeCommands" : {
+    "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth-entitlement.plist" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<entitlement-plist>"
+        },
+        {
+          "kind" : "virtual",
+          "name" : "<com.apple.security.get-task-allow>"
+        }
+      ],
+      "outputFilePath" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth-entitlement.plist"
+    },
+    "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/MemoryHealthApp.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/MemoryStats.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/TopProcesses.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth.build/sources"
+    },
+    "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth.build/MemoryHealthApp.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth.build/MemoryStats.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth.build/TopProcesses.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/MemoryHealth.product/Objects.LinkFileList"
+    },
+    "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+    }
+  }
+}
