@@ -1,7 +1,0 @@
-version: "Apple Swift version 5.10 (swiftlang-5.10.0.13 clang-1500.3.9.4)"
-options: "cb11dec9215a44fa11c491221f9a2807"
-build_time: [1774198698, 997245000]
-inputs:
-  "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/MemoryHealthApp.swift": [1774198675, 142366006]
-  "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/MemoryStats.swift": [1774198630, 930203394]
-  "/Users/gj/Apps/claude/memory-health/MemoryHealth.app/Sources/TopProcesses.swift": [1774198642, 978027225]
