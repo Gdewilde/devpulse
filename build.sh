@@ -40,6 +40,12 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 # Copy binary
 cp "$BINARY_PATH" "$APP_BUNDLE/Contents/MacOS/"
 
+# Copy app icon if it exists
+ICON_PATH="$SRC_DIR/Resources/AppIcon.icns"
+if [[ -f "$ICON_PATH" ]]; then
+    cp "$ICON_PATH" "$APP_BUNDLE/Contents/Resources/"
+fi
+
 # Create Info.plist
 cat > "$APP_BUNDLE/Contents/Info.plist" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -66,6 +72,8 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << EOF
     <true/>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>BuildTimestamp</key>
     <string>${BUILD_TIME}</string>
 </dict>

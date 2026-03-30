@@ -62,14 +62,18 @@ else
     echo "Tagged v${VERSION}"
 fi
 
-# Step 6: GitHub Release
+# Step 6: Create stable-named copy for direct download links
+STABLE_DMG="$ROOT_DIR/build/DevPulse.dmg"
+cp "$DMG_PATH" "$STABLE_DMG"
+
+# Step 7: GitHub Release
 echo ""
 echo "[6/6] Creating GitHub Release..."
 if gh release view "v${VERSION}" >/dev/null 2>&1; then
-    echo "Release v${VERSION} already exists. Uploading DMG..."
-    gh release upload "v${VERSION}" "$DMG_PATH" --clobber
+    echo "Release v${VERSION} already exists. Uploading DMGs..."
+    gh release upload "v${VERSION}" "$DMG_PATH" "$STABLE_DMG" --clobber
 else
-    gh release create "v${VERSION}" "$DMG_PATH" \
+    gh release create "v${VERSION}" "$DMG_PATH" "$STABLE_DMG" \
         --title "DevPulse v${VERSION}" \
         --generate-notes
 fi
