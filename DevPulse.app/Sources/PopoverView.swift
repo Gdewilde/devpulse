@@ -447,11 +447,20 @@ struct ZombieSection: View {
             }
             .buttonStyle(.borderless)
 
-            ForEach(state.zombies, id: \.project) { zombie in
-                HStack(spacing: 0) {
-                    Text("\(zombie.project) (\(zombie.count))")
+            ForEach(Array(state.zombies.enumerated()), id: \.offset) { _, zombie in
+                HStack(spacing: 4) {
+                    Text(zombie.project)
                         .font(.system(size: 11))
                         .foregroundStyle(.tertiary)
+                    Text(zombie.kind.rawValue)
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(.quaternary)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(.quaternary.opacity(0.3), in: Capsule())
+                    Text("(\(zombie.count))")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.quaternary)
                     Spacer()
                     Text(fmtMB(zombie.totalMB))
                         .font(.system(size: 10, design: .monospaced))

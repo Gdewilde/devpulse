@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UserNotifications
 
 // MARK: - App Entry Point
 
@@ -26,6 +27,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var reportPanel: NSPanel?
     private var eventMonitor: Any?
     private let autoOptimizer = AutoOptimizer()
+    private var previousZombiePids: Set<Int32> = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -124,6 +126,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 self.appState.processes = procs
                 self.appState.zombies = zombies
+                self.notifyNewZombies(zombies)
                 self.appState.dockerStats = docker
                 self.appState.electronStats = electron
                 self.appState.chromeStats = chrome
@@ -149,6 +152,50 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self.appState.modelResults = self.ramAdvisor.checkModels()
             }
         }
+    }
+
+    // MARK: - Zombie Notifications
+
+    private func notifyNewZombies(_ zombies: [ZombieGroup]) {
+        let currentPids = Set(zombies.flatMap(\.pids))
+        let newPids = currentPids.subtracting(previousZombiePids)
+        previousZombiePids = currentPids
+
+        guard !newPids.isEmpty else { return }
+
+        // Find the groups that contain new pids
+        let newGroups = zombies.filter { group in
+            group.pids.contains { newPids.contains($0) }
+        }
+        let newCount = newPids.count
+        let newMB = newGroups.reduce(0) { $0 + $1.totalMB }
+        let memStr = newMB >= 1024
+            ? String(format: "%.1f GB", Double(newMB) / 1024)
+            : "\(newMB) MB"
+
+        // Build description
+        var parts: [String] = []
+        let orphanCount = newGroups.filter { $0.kind == .orphan }.reduce(0) { $0 + $1.count }
+        let lspCount = newGroups.filter { $0.kind == .staleLSP }.reduce(0) { $0 + $1.count }
+        let watcherCount = newGroups.filter { $0.kind == .staleWatcher }.reduce(0) { $0 + $1.count }
+        if orphanCount > 0 { parts.append("\(orphanCount) orphaned") }
+        if lspCount > 0 { parts.append("\(lspCount) stale LSP") }
+        if watcherCount > 0 { parts.append("\(watcherCount) stale watcher") }
+        let detail = parts.joined(separator: ", ")
+
+        let projects = Set(newGroups.map(\.project)).joined(separator: ", ")
+
+        let content = UNMutableNotificationContent()
+        content.title = "\(newCount) zombie processes using \(memStr)"
+        content.body = "\(detail) from \(projects). Open DevPulse to kill them."
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: "devpulse-zombie-\(Date().timeIntervalSince1970)",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
     }
 
     // MARK: - Popover

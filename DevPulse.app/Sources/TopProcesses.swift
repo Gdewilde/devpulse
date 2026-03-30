@@ -843,16 +843,25 @@ func getElectronStats(processes: [ProcessInfo_Memory]) -> ElectronStats? {
 
 // MARK: - Zombie Detection
 
+enum ZombieKind: String {
+    case orphan = "orphan"         // ppid == 1, no terminal — fully abandoned
+    case staleLSP = "stale LSP"    // LSP server for project not open in any IDE
+    case staleWatcher = "watcher"  // File watcher for project not open in any IDE
+}
+
 struct ZombieGroup {
     let project: String
     let pids: [Int32]
     let totalMB: Int
     let count: Int
     let sampleArgs: String
+    let kind: ZombieKind
 }
 
-/// Detect orphaned dev processes: node/runtime procs whose parent is launchd (pid 1)
-/// and have no controlling terminal — likely leftover from killed terminal sessions.
+/// Detect zombie processes:
+/// 1. Orphaned: ppid == 1 with no terminal (classic zombies)
+/// 2. Stale LSPs: language servers running for projects with no open IDE
+/// 3. Stale watchers: file watchers (fswatch, chokidar, nodemon, esbuild) for closed projects
 func getZombieProcesses() -> [ZombieGroup] {
     let pipe = Pipe()
     let proc = Process()
@@ -866,7 +875,8 @@ func getZombieProcesses() -> [ZombieGroup] {
     proc.waitUntilExit()
     guard let output = String(data: data, encoding: .utf8) else { return [] }
 
-    let zombieNames: Set<String> = [
+    // Process categories
+    let orphanNames: Set<String> = [
         "node", "npm", "yarn", "pnpm", "tsx", "ts-node",
         "tsserver", "eslint_d", "prettier",
         "esbuild", "webpack", "vite", "next-router-worker",
@@ -875,14 +885,32 @@ func getZombieProcesses() -> [ZombieGroup] {
         "doppler"
     ]
 
-    struct OrphanProc {
+    let lspNames: Set<String> = [
+        "gopls", "rust-analyzer", "sourcekit-lsp", "clangd", "pylsp",
+        "tsserver", "typescript-language-server", "vscode-json-languageserver",
+        "eslint_d", "prettier_d", "biome",
+        "lua-language-server", "ruby-lsp", "solargraph",
+        "tailwindcss-language-server", "astro-ls", "svelte-language-server"
+    ]
+
+    let watcherNames: Set<String> = [
+        "fswatch", "chokidar", "nodemon", "watchman",
+        "esbuild", "vite", "webpack", "next-router-worker",
+        "turbopack", "parcel"
+    ]
+
+    // Get projects with open IDE windows (for stale detection)
+    let openProjects = getOpenIDEProjects()
+
+    struct DetectedProc {
         let pid: Int32
         let rss: Int
         let args: String
         let project: String
+        let kind: ZombieKind
     }
 
-    var orphans: [OrphanProc] = []
+    var detected: [DetectedProc] = []
 
     for line in output.components(separatedBy: "\n") {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -897,40 +925,75 @@ func getZombieProcesses() -> [ZombieGroup] {
         let tty = String(parts[2])
         let args = String(parts[4])
 
-        // Zombie criteria: parent is launchd AND no controlling terminal
-        guard ppid == 1 && tty == "??" else { continue }
-
         let execPath = args.components(separatedBy: " ").first ?? args
         let name = execPath.components(separatedBy: "/").last ?? execPath
-
         let baseName = name.components(separatedBy: "[").first?
             .trimmingCharacters(in: .whitespaces) ?? name
-        guard zombieNames.contains(baseName) || baseName == "node" else { continue }
 
         let mb = rss / 1024
         guard mb >= 5 else { continue }
 
-        // Try to determine project from args
-        var project = "unknown"
+        // Extract project from args
+        var project: String? = nil
         if let range = args.range(of: #"/Users/[^/]+/[Aa]pps/([^/]+)"#, options: .regularExpression) {
-            let match = String(args[range])
-            project = match.components(separatedBy: "/").last ?? "unknown"
+            project = String(args[range]).components(separatedBy: "/").last
         }
 
-        orphans.append(OrphanProc(pid: pid, rss: rss, args: args, project: project))
+        // 1. Classic orphans: ppid == 1, no terminal, known dev process
+        if ppid == 1 && tty == "??" && (orphanNames.contains(baseName) || baseName == "node") {
+            detected.append(DetectedProc(
+                pid: pid, rss: rss, args: args,
+                project: project ?? "unknown",
+                kind: .orphan
+            ))
+            continue
+        }
+
+        // 2. Stale LSP servers: running for a project not open in any IDE
+        if lspNames.contains(baseName), let proj = project, !openProjects.contains(proj) {
+            detected.append(DetectedProc(
+                pid: pid, rss: rss, args: args,
+                project: proj,
+                kind: .staleLSP
+            ))
+            continue
+        }
+
+        // 3. Stale file watchers: running for a project not open in any IDE
+        if watcherNames.contains(baseName), let proj = project, !openProjects.contains(proj) {
+            detected.append(DetectedProc(
+                pid: pid, rss: rss, args: args,
+                project: proj,
+                kind: .staleWatcher
+            ))
+            continue
+        }
     }
 
-    // Group by project
-    var groups: [String: (pids: [Int32], totalMB: Int, count: Int, sampleArgs: String)] = [:]
-    for orphan in orphans {
-        var g = groups[orphan.project] ?? (pids: [], totalMB: 0, count: 0, sampleArgs: orphan.args)
-        g.pids.append(orphan.pid)
-        g.totalMB += orphan.rss / 1024
+    // Group by project + kind
+    struct GroupKey: Hashable {
+        let project: String
+        let kind: ZombieKind
+    }
+    var groups: [GroupKey: (pids: [Int32], totalMB: Int, count: Int, sampleArgs: String)] = [:]
+
+    for d in detected {
+        let key = GroupKey(project: d.project, kind: d.kind)
+        var g = groups[key] ?? (pids: [], totalMB: 0, count: 0, sampleArgs: d.args)
+        g.pids.append(d.pid)
+        g.totalMB += d.rss / 1024
         g.count += 1
-        groups[orphan.project] = g
+        groups[key] = g
     }
 
-    return groups.map { project, g in
-        ZombieGroup(project: project, pids: g.pids, totalMB: g.totalMB, count: g.count, sampleArgs: g.sampleArgs)
+    return groups.map { key, g in
+        ZombieGroup(
+            project: key.project,
+            pids: g.pids,
+            totalMB: g.totalMB,
+            count: g.count,
+            sampleArgs: g.sampleArgs,
+            kind: key.kind
+        )
     }.sorted { $0.totalMB > $1.totalMB }
 }
