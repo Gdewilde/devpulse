@@ -53,7 +53,7 @@ struct PopoverView: View {
                 }
                 .buttonStyle(.borderless)
 
-                FooterSection()
+                FooterSection(onAction: onAction)
             }
         }
         .frame(width: 340)
@@ -814,6 +814,9 @@ struct ActionSection: View {
                 .padding(.bottom, 4)
             }
 
+            // Quick Clean with before/after
+            QuickCleanRow(state: state, onAction: onAction)
+
             ActionRow(icon: "chart.bar.doc.horizontal", label: "RAM Report", shortcut: "M", onAction: { onAction(.showReport) })
             ActionRow(icon: "magnifyingglass", label: "Run Full Check", shortcut: "R", onAction: { onAction(.fullCheck) })
             ActionRow(icon: "wand.and.stars", label: "Run Auto-Fix", shortcut: "F", onAction: { onAction(.autoFix) })
@@ -875,17 +878,90 @@ struct ActionRow: View {
 // MARK: - Footer
 
 struct FooterSection: View {
+    var onAction: ((AppAction) -> Void)?
+
     var body: some View {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
-        HStack {
+        HStack(spacing: 8) {
             Text("DevPulse v\(version)")
                 .font(.system(size: 9))
                 .foregroundStyle(.quaternary)
             Spacer()
+            Button {
+                onAction?(.openURL("https://devpulse.sh"))
+            } label: {
+                Text("devpulse.sh")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.tertiary)
+            }
+            .buttonStyle(.borderless)
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 10)
         .padding(.top, 4)
+    }
+}
+
+// MARK: - Quick Clean
+
+struct QuickCleanRow: View {
+    @ObservedObject var state: AppState
+    var onAction: (AppAction) -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Button {
+                onAction(.quickClean)
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 11))
+                        .foregroundStyle(state.isCleaningUp ? Color.secondary : Color.green)
+                        .frame(width: 16)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(state.isCleaningUp ? "Cleaning..." : "Quick Clean")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.primary)
+                        if let scan = state.cleanupScan, scan.totalReclaimableMB > 0 {
+                            Text("\(fmtMB(scan.totalReclaimableMB)) reclaimable")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 5)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .disabled(state.isCleaningUp)
+
+            // Show last cleanup result
+            if let result = state.lastCleanupResult {
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark.circle")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.green)
+                    Text("Freed \(result.freedFormatted)")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(.green)
+                    ForEach(result.results, id: \.action) { r in
+                        if r.success {
+                            Text(r.action)
+                                .font(.system(size: 8))
+                                .foregroundStyle(.tertiary)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(.quaternary.opacity(0.3), in: Capsule())
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 44)
+                .padding(.bottom, 4)
+            }
+        }
     }
 }
 
@@ -916,6 +992,7 @@ enum AppAction {
     case showReport
     case fullCheck
     case autoFix
+    case quickClean
     case toggleAutoOptimizer
     case openURL(String)
     case chromeTaskManager

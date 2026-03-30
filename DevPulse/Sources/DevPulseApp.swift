@@ -150,6 +150,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
                 self.appState.verdict = self.ramAdvisor.getVerdict()
                 self.appState.modelResults = self.ramAdvisor.checkModels()
+
+                // Scan cleanups periodically (every 5 min, piggyback on snapshot timing)
+                if Date().timeIntervalSince(self.lastSnapshotTime) < 2 {
+                    DispatchQueue.global(qos: .utility).async { [weak self] in
+                        let scan = scanAllCleanups()
+                        DispatchQueue.main.async {
+                            self?.appState.cleanupScan = scan
+                        }
+                    }
+                }
             }
         }
     }
@@ -259,6 +269,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
             p.arguments = ["-a", "Terminal", "/Users/gj/Apps/devpulse/mem-check.sh", "--args", "--fix"]
             try? p.run()
+
+        case .quickClean:
+            appState.isCleaningUp = true
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                let result = runQuickClean()
+                DispatchQueue.main.async {
+                    self?.appState.lastCleanupResult = result
+                    self?.appState.isCleaningUp = false
+                    self?.refreshData()
+                }
+            }
 
         case .toggleAutoOptimizer:
             appState.autoOptimizerEnabled.toggle()

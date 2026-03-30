@@ -40,6 +40,10 @@ struct OptimizerImpact {
     }
 }
 
+    @Published var cleanupScan: CleanupScanResult? = nil
+    @Published var lastCleanupResult: QuickCleanResult? = nil
+    @Published var isCleaningUp: Bool = false
+
     private var previousSwapGB: Double? = nil
 
     func updateSwapTrend() {
