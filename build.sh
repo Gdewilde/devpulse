@@ -4,7 +4,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SRC_DIR="$SCRIPT_DIR/DevPulse.app"
+SRC_DIR="$SCRIPT_DIR/DevPulse"
 APP_BUNDLE="$SCRIPT_DIR/build/DevPulse.app"
 INSTALL_PATH="/Applications/DevPulse.app"
 BUILD_TIME=$(date '+%Y-%m-%d %H:%M:%S')

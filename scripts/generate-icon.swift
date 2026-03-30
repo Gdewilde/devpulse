@@ -178,8 +178,8 @@ for (size, name) in sizes {
 }
 
 // Convert iconset to icns
-let icnsPath = "\(rootDir)/DevPulse.app/Resources/AppIcon.icns"
-try? fm.createDirectory(atPath: "\(rootDir)/DevPulse.app/Resources", withIntermediateDirectories: true)
+let icnsPath = "\(rootDir)/DevPulse/Resources/AppIcon.icns"
+try? fm.createDirectory(atPath: "\(rootDir)/DevPulse/Resources", withIntermediateDirectories: true)
 
 let proc = Process()
 proc.executableURL = URL(fileURLWithPath: "/usr/bin/iconutil")
