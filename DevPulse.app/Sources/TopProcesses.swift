@@ -29,7 +29,12 @@ struct ProcessInfo_Memory: Identifiable {
     }
 
     /// Short summary like "8 node, 2 tsserver, 1 Cursor"
+    /// For Claude CLI: "12 sessions"
     var breakdownSummary: String? {
+        if name == "Claude CLI" {
+            let sessionCount = breakdown.reduce(0) { $0 + $1.count }
+            return "\(sessionCount) sessions"
+        }
         guard breakdown.count > 1 else { return nil }
         let top = breakdown.prefix(3)
         let parts = top.map { "\($0.count) \($0.name)" }
@@ -76,6 +81,51 @@ private func extractAppBundleName(from args: String) -> String? {
     var name = String(match[match.index(after: lastSlash)...])
     if name.hasSuffix(".app") { name = String(name.dropLast(4)) }
     return name.isEmpty ? nil : name
+}
+
+/// Extract a descriptive label for a Claude CLI session from its args.
+/// e.g., "claude --worktree stripe-billing" → "stripe-billing"
+///        "claude --permission-mode auto" → "session (auto)"
+///        "claude" → nil (will fall back to plain "claude")
+private func claudeSessionLabel(name: String, args: String) -> String? {
+    guard name == "claude" else { return nil }
+
+    // Check for --worktree flag
+    if let range = args.range(of: #"--worktree\s+(\S+)"#, options: .regularExpression) {
+        let match = String(args[range])
+        let worktree = match.components(separatedBy: .whitespaces).last ?? ""
+        if !worktree.isEmpty { return worktree }
+    }
+
+    // Try to extract the working directory from /proc or lsof — too expensive.
+    // Instead, parse any flags to differentiate sessions.
+    let flags = args.components(separatedBy: " ").dropFirst() // drop "claude" itself
+    if flags.isEmpty { return "session" }
+
+    // Extract meaningful flags
+    var label = "session"
+    for (i, flag) in flags.enumerated() {
+        if flag == "--permission-mode", i + 1 < flags.count {
+            // Not very useful for display, skip
+            continue
+        }
+        if flag == "-p" || flag == "--print" {
+            label = "one-shot"
+            break
+        }
+        if flag == "--resume" || flag == "-r" {
+            label = "resumed"
+            break
+        }
+        if !flag.hasPrefix("-") && !flag.hasPrefix("/") {
+            // Positional arg — might be a prompt or file, use first word
+            let short = String(flag.prefix(20))
+            label = short
+            break
+        }
+    }
+
+    return label
 }
 
 /// Extract project name from args path (e.g., "/Users/gj/Apps/unify/..." → "unify").
@@ -147,6 +197,7 @@ private func resolveAppFamily(
 
     // CLI tools named "claude" (lowercase, not from .app bundle)
     if name == "claude" {
+        // Try to identify the session by --worktree or --permission-mode flags
         return "Claude CLI"
     }
 
@@ -254,11 +305,12 @@ func getTopProcesses(limit: Int = 8) -> [ProcessInfo_Memory] {
         if agg.appBundleName == nil, let bundleName = extractAppBundleName(from: proc.args) {
             agg.appBundleName = bundleName
         }
-        // Track subprocess types
-        var sub = agg.subProcesses[proc.name] ?? SubProcess()
+        // Track subprocess types — for Claude CLI, use session context as the key
+        let subKey = claudeSessionLabel(name: proc.name, args: proc.args) ?? proc.name
+        var sub = agg.subProcesses[subKey] ?? SubProcess()
         sub.count += 1
         sub.totalMB += mb
-        agg.subProcesses[proc.name] = sub
+        agg.subProcesses[subKey] = sub
         aggregates[family] = agg
     }
 
