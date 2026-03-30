@@ -105,6 +105,13 @@ struct HeaderSection: View {
                 StatChip(label: "Compressed", value: fmt(state.stats.compressedGB))
                 StatChip(label: "Swap", value: swapText, accent: swapColor)
             }
+
+            // SSD health (if available)
+            if let ssd = state.ssdHealth, ssd.available {
+                HStack(spacing: 12) {
+                    StatChip(label: "SSD Written", value: ssd.dataWrittenFormatted)
+                }
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 14)
@@ -357,8 +364,19 @@ struct OverheadSection: View {
                     icon: "shippingbox",
                     text: docker.isIdle
                         ? "Docker idle, \(docker.vmFormatted) reserved"
-                        : "\(docker.containerCount) containers using \(docker.containerFormatted)"
+                        : "\(docker.containerCount) containers using \(docker.containerFormatted)",
+                    actionLabel: docker.wasteMB > 500 || docker.isIdle ? "Restart VM" : nil,
+                    action: { onAction(.restartDockerVM) }
                 )
+                // OrbStack suggestion when Docker waste is chronic
+                if isDockerWasteChronic(stats: docker) && !isOrbStackInstalled() {
+                    OverheadRow(
+                        icon: "lightbulb",
+                        text: "Try OrbStack — lighter Docker alternative",
+                        actionLabel: "Get it",
+                        action: { onAction(.openURL("https://orbstack.dev")) }
+                    )
+                }
             }
 
             if let electron = state.electronStats {
@@ -818,6 +836,7 @@ struct ActionSection: View {
             QuickCleanRow(state: state, onAction: onAction)
 
             ActionRow(icon: "chart.bar.doc.horizontal", label: "RAM Report", shortcut: "M", onAction: { onAction(.showReport) })
+            ActionRow(icon: "chart.xyaxis.line", label: "Memory Timeline", shortcut: "T", onAction: { onAction(.showTimeline) })
             ActionRow(icon: "magnifyingglass", label: "Run Full Check", shortcut: "R", onAction: { onAction(.fullCheck) })
             ActionRow(icon: "wand.and.stars", label: "Run Auto-Fix", shortcut: "F", onAction: { onAction(.autoFix) })
         }
@@ -998,9 +1017,11 @@ enum AppAction {
     case forceQuit(ProcessInfo_Memory)
     case killPids([Int32])
     case showReport
+    case showTimeline
     case fullCheck
     case autoFix
     case quickClean
+    case restartDockerVM
     case toggleAutoOptimizer
     case openURL(String)
     case chromeTaskManager

@@ -40,6 +40,7 @@ struct OptimizerImpact {
     }
 }
 
+    @Published var ssdHealth: SSDHealth? = nil
     @Published var cleanupScan: CleanupScanResult? = nil
     @Published var lastCleanupResult: QuickCleanResult? = nil
     @Published var isCleaningUp: Bool = false

@@ -27,6 +27,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var reportPanel: NSPanel?
     private var eventMonitor: Any?
     private let autoOptimizer = AutoOptimizer()
+    private let timelineStore = TimelineStore()
+    private let swapTracker = SwapTracker()
     private var previousZombiePids: Set<Int32> = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -55,6 +57,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             self?.appState.stats = MemoryStats.current()
             self?.appState.updateSwapTrend()
+            self?.swapTracker.record(swapGB: self?.appState.stats.swapUsedGB ?? 0)
             self?.updateStatusBar()
             self?.refreshData()
         }
@@ -62,6 +65,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Start auto-optimizer
         autoOptimizer.appState = appState
         autoOptimizer.start()
+
+        // Fetch SSD health once (slow operation)
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let health = getSSDHealth()
+            DispatchQueue.main.async { self?.appState.ssdHealth = health }
+        }
 
         // Global hotkey: Cmd+Shift+M for RAM Report
         NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -146,6 +155,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                         inactiveServerMB: inactiveMB
                     )
                     self.lastSnapshotTime = Date()
+
+                    // Timeline: record snapshot and detect events
+                    self.timelineStore.recordSnapshot(stats: stats, topProcess: procs.first)
+                    self.timelineStore.detectEvents(stats: stats, dockerRunning: docker?.isRunning ?? false)
                 }
 
                 self.appState.verdict = self.ramAdvisor.getVerdict()
@@ -256,6 +269,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             popover.performClose(nil)
             showRAMReport()
 
+        case .showTimeline:
+            popover.performClose(nil)
+            showTimelinePanel()
+
         case .fullCheck:
             popover.performClose(nil)
             let p = Process()
@@ -269,6 +286,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
             p.arguments = ["-a", "Terminal", "/Users/gj/Apps/devpulse/mem-check.sh", "--args", "--fix"]
             try? p.run()
+
+        case .restartDockerVM:
+            restartDockerVM { [weak self] success, message in
+                if success { self?.refreshData() }
+            }
 
         case .quickClean:
             appState.isCleaningUp = true
@@ -330,6 +352,49 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case .quitApp:
             NSApplication.shared.terminate(nil)
         }
+    }
+
+    // MARK: - Timeline Panel
+
+    private var timelinePanel: NSPanel?
+
+    private func showTimelinePanel() {
+        if let existing = timelinePanel {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 600, height: 500),
+            styleMask: [.titled, .closable, .resizable, .utilityWindow],
+            backing: .buffered,
+            defer: false
+        )
+        panel.title = "DevPulse Memory Timeline"
+        panel.isFloatingPanel = true
+        panel.center()
+
+        let scrollView = NSScrollView(frame: panel.contentView!.bounds)
+        scrollView.autoresizingMask = [.width, .height]
+        scrollView.hasVerticalScroller = true
+
+        let textView = NSTextView(frame: scrollView.bounds)
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.autoresizingMask = [.width]
+        textView.textContainerInset = NSSize(width: 20, height: 20)
+        textView.backgroundColor = .textBackgroundColor
+        textView.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+
+        let timelineText = timelineStore.exportAsText(hours: 24)
+        textView.string = timelineText
+
+        scrollView.documentView = textView
+        panel.contentView = scrollView
+        panel.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        timelinePanel = panel
     }
 
     // MARK: - RAM Report Panel

@@ -103,5 +103,109 @@ enum HealthStatus: String {
         case .critical: return "Critical"
         }
     }
+}
 
+// MARK: - Swap Velocity (Phase 7)
+
+class SwapTracker {
+    private var history: [(timestamp: Date, swapMB: Double)] = []
+    private let maxHistory = 60 // 60 samples = ~5 min at 5s intervals
+
+    func record(swapGB: Double) {
+        history.append((Date(), swapGB * 1024))
+        if history.count > maxHistory { history.removeFirst() }
+    }
+
+    /// Swap growth rate in MB per hour
+    var velocityMBPerHour: Double {
+        guard history.count >= 6 else { return 0 } // need at least 30s of data
+        let first = history.first!
+        let last = history.last!
+        let timeDelta = last.timestamp.timeIntervalSince(first.timestamp)
+        guard timeDelta > 10 else { return 0 }
+        let swapDelta = last.swapMB - first.swapMB
+        return swapDelta / timeDelta * 3600
+    }
+
+    /// Predicted time until thrashing (swap > 80% of RAM), or nil if swap is decreasing
+    func timeToThrashing(totalRAMGB: Double) -> TimeInterval? {
+        let velocity = velocityMBPerHour
+        guard velocity > 100 else { return nil } // growing > 100 MB/hr
+        let currentSwapMB = history.last?.swapMB ?? 0
+        let thrashingThresholdMB = totalRAMGB * 1024 * 0.8
+        guard currentSwapMB < thrashingThresholdMB else { return nil } // already there
+        let remainingMB = thrashingThresholdMB - currentSwapMB
+        let hoursRemaining = remainingMB / velocity
+        return hoursRemaining * 3600
+    }
+
+    var velocityFormatted: String {
+        let v = velocityMBPerHour
+        if abs(v) < 50 { return "stable" }
+        let sign = v > 0 ? "+" : ""
+        if abs(v) >= 1024 {
+            return String(format: "%@%.1f GB/hr", sign, v / 1024)
+        }
+        return String(format: "%@%.0f MB/hr", sign, v)
+    }
+}
+
+// MARK: - SSD Health (Phase 7)
+
+struct SSDHealth {
+    let dataWrittenGB: Int
+    let dataReadGB: Int
+    let powerOnHours: Int
+    let available: Bool
+
+    var dataWrittenFormatted: String {
+        dataWrittenGB >= 1024
+            ? String(format: "%.1f TB", Double(dataWrittenGB) / 1024)
+            : "\(dataWrittenGB) GB"
+    }
+}
+
+/// Read SSD health data from system_profiler (no admin required)
+func getSSDHealth() -> SSDHealth {
+    let pipe = Pipe()
+    let proc = Process()
+    proc.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
+    proc.arguments = ["SPNVMeDataType", "-json"]
+    proc.standardOutput = pipe
+    proc.standardError = FileHandle.nullDevice
+
+    do { try proc.run() } catch {
+        return SSDHealth(dataWrittenGB: 0, dataReadGB: 0, powerOnHours: 0, available: false)
+    }
+    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+    proc.waitUntilExit()
+
+    guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+          let nvme = json["SPNVMeDataType"] as? [[String: Any]],
+          let disk = nvme.first else {
+        return SSDHealth(dataWrittenGB: 0, dataReadGB: 0, powerOnHours: 0, available: false)
+    }
+
+    // Parse data written — format varies: "123.45 TB" or "456.78 GB"
+    let writtenStr = disk["spnvme_databyteswritten"] as? String ?? ""
+    let readStr = disk["spnvme_databytesread"] as? String ?? ""
+
+    return SSDHealth(
+        dataWrittenGB: parseStorageSize(writtenStr),
+        dataReadGB: parseStorageSize(readStr),
+        powerOnHours: 0, // Not always available
+        available: true
+    )
+}
+
+private func parseStorageSize(_ s: String) -> Int {
+    let trimmed = s.trimmingCharacters(in: .whitespaces)
+    if trimmed.hasSuffix("TB") {
+        let num = Double(trimmed.dropLast(3).trimmingCharacters(in: .whitespaces)) ?? 0
+        return Int(num * 1024)
+    } else if trimmed.hasSuffix("GB") {
+        let num = Double(trimmed.dropLast(3).trimmingCharacters(in: .whitespaces)) ?? 0
+        return Int(num)
+    }
+    return 0
 }

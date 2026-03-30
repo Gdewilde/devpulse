@@ -791,6 +791,55 @@ private func parseMemoryString(_ s: String) -> Int {
     return 0
 }
 
+/// Restart Docker Desktop VM to reclaim hoarded memory.
+/// Containers will restart automatically after the VM reboots.
+func restartDockerVM(completion: @escaping (Bool, String) -> Void) {
+    DispatchQueue.global(qos: .userInitiated).async {
+        // Quit Docker Desktop gracefully
+        let quitScript = "tell application \"Docker\" to quit"
+        let quitProc = Process()
+        quitProc.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        quitProc.arguments = ["-e", quitScript]
+        quitProc.standardOutput = FileHandle.nullDevice
+        quitProc.standardError = FileHandle.nullDevice
+        try? quitProc.run()
+        quitProc.waitUntilExit()
+
+        // Wait for Docker to fully stop
+        Thread.sleep(forTimeInterval: 5)
+
+        // Relaunch Docker Desktop
+        let launchProc = Process()
+        launchProc.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        launchProc.arguments = ["-a", "Docker"]
+        launchProc.standardOutput = FileHandle.nullDevice
+        launchProc.standardError = FileHandle.nullDevice
+        do {
+            try launchProc.run()
+            launchProc.waitUntilExit()
+            DispatchQueue.main.async {
+                completion(true, "Docker VM restarted. Memory reclaimed.")
+            }
+        } catch {
+            DispatchQueue.main.async {
+                completion(false, "Failed to restart Docker Desktop")
+            }
+        }
+    }
+}
+
+/// Check if OrbStack is installed as a lighter Docker alternative.
+func isOrbStackInstalled() -> Bool {
+    FileManager.default.fileExists(atPath: "/Applications/OrbStack.app")
+}
+
+/// Check if Docker waste is chronic (consistently high over multiple checks).
+/// Returns true if Docker VM waste > 2 GB on average.
+func isDockerWasteChronic(stats: DockerStats?) -> Bool {
+    guard let stats = stats, stats.isRunning else { return false }
+    return stats.wasteMB > 2048
+}
+
 // MARK: - Electron Duplicate Detection
 
 struct ElectronStats {
