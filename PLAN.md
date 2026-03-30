@@ -11,8 +11,35 @@ Developers running heavy workloads on Mac: multiple IDE workspaces, Electron app
 
 ## Pricing Model
 
-- **Free:** Menu bar monitor + per-project memory view + quit/force quit
-- **Pro ($12 one-time):** Smart alerts, cleanup actions, RAM advisor, timeline, zombie detection
+**Launch phase: everything is free.** All Pro features unlocked during launch to build user base and gather feedback. Pricing activates post-launch via RevenueCat.
+
+**Post-launch pricing (managed via RevenueCat):**
+
+| Tier | Price | Includes |
+|------|-------|----------|
+| **Free** | $0 forever | Menu bar monitor, process grouping, quit/force quit, swap tracking |
+| **Pro Monthly** | $4/mo | Auto-optimizer, Chrome/Docker intelligence, zombie auto-kill, RAM verdicts, weekly reports |
+| **Pro Annual** | $36/yr ($3/mo) | Same as monthly, 25% savings. 7-day free trial. |
+| **Pro Lifetime** | $49 one-time | Same as Pro, forever. For users who hate subscriptions. |
+
+**Why this structure (RevenueCat data from 115K+ apps):**
+- Cheap annual plans retain **36% of users after a year** vs 6.7% for high-priced monthly
+- **82% of trial starts happen on install day** — show paywall during onboarding
+- **35% of apps** now mix subscriptions with lifetime purchases; the 7% of hybrid buyers generate 25% of revenue
+- Premium-priced apps convert at **2.66%** vs 1.49% for low-priced — the $49 lifetime anchors the annual as a deal
+- RevenueCat is **free until $2,500/mo revenue** (1% above that). Zero risk to integrate.
+
+**Contextual paywall triggers (post-launch):**
+- Memory hits 90%+ → "Pro would have caught this 30 minutes ago"
+- Zombie processes detected → "Found 5 zombies wasting 1.2 GB. Pro auto-kills these."
+- Docker idle → "Docker is reserving 6 GB for nothing. Pro detects and alerts you."
+- Chrome > 15 GB → "Chrome is using 18 GB. Pro shows which tabs are responsible."
+
+**A/B test plan via RevenueCat Experiments:**
+- Price points: $4/mo vs $6/mo
+- Trial length: 3-day vs 7-day vs no trial
+- Paywall timing: first launch vs after 3 days vs at memory pressure event
+- Offering order: annual-first vs lifetime-first
 
 ## Competitive Edge
 
@@ -42,8 +69,12 @@ Rename, rebrand, polish what exists into a shippable free product.
       "unify: 11.2 GB — 8 node, 2 LSPs, 1 Cursor workspace"
 - [ ] Process kill actions (Quit / Force Quit from submenu) — done
 - [ ] Build pipeline: build.sh auto-installs + relaunches — done
-- [ ] Landing page (one-pager explaining the value prop)
+- [x] Landing page + programmatic SEO pages (Next.js on Vercel)
+      - /caniuse/[app] — 18 app monitoring pages
+      - /apps/[app]-ram-usage — 14 RAM reduction guide pages
+      - /compare/[tool] — 6 honest comparison pages (Activity Monitor, iStat Menus, CleanMyMac, Memory Clean, htop, OrbStack)
 - [ ] Ship free version on GitHub + Homebrew cask
+- [ ] Integrate RevenueCat SDK (macOS via SPM) — free during launch, gates Pro features post-launch
 
 ### Phase 2: Zombie Hunter (v1.1)
 
@@ -64,11 +95,11 @@ This is the headline feature. Analyze usage patterns and give a verdict.
 
 - [x] Track peak memory over rolling 7 days
 - [x] Calculate "optimized memory" = peak minus waste:
-      - Zombie processes (recoverable) ✓
-      - Docker VM overhead vs actual container usage (recoverable) ✓
-      - Duplicate Electron runtimes across apps (not recoverable but educatable) ✓
-      - Inactive project dev servers still running (recoverable) ✓
-      - DerivedData / build caches detection ✓
+      - Zombie processes (recoverable)
+      - Docker VM overhead vs actual container usage (recoverable)
+      - Duplicate Electron runtimes across apps (not recoverable but educatable)
+      - Inactive project dev servers still running (recoverable)
+      - DerivedData / build caches detection
 - [x] Verdict engine with context-aware messages:
       - Identifies biggest waste source and suggests specific action
       - Four rating tiers: plenty, fine, tight, needs more
@@ -142,26 +173,43 @@ One-click workspace switching.
 - [ ] Estimated memory for each profile
 - [ ] Schedule: "Switch to Light at 6pm" (end of workday)
 
+### Phase 9: Monetization Activation (post-launch)
+
+Transition from free launch to hybrid subscription model via RevenueCat.
+
+- [ ] Configure RevenueCat offerings: Monthly ($4), Annual ($36 w/ 7-day trial), Lifetime ($49)
+- [ ] Build native paywall UI matching DevPulse design system
+- [ ] Implement contextual paywall triggers (memory pressure, zombies detected, Docker idle, Chrome bloat)
+- [ ] Set up RevenueCat Experiments: price points, trial lengths, paywall timing
+- [ ] Implement targeting: new users get trial offer, lapsed users get win-back, 16 GB users get urgency messaging
+- [ ] Add consumable purchase: "Deep RAM Audit" report ($1.99) — captures hybrid buyers
+- [ ] Grandfather early launch users with permanent Pro access or extended trial
+
 ---
 
 ## Technical Decisions
 
 **Language:** Swift (native, low footprint, menu bar first-class)
 **Data storage:** SQLite for timeline data, UserDefaults for preferences
-**Distribution:** GitHub releases + Homebrew cask (free), Gumroad or Paddle (Pro)
+**Distribution:** GitHub releases + Homebrew cask (free), RevenueCat for Pro (macOS SDK via SPM)
+**Monetization platform:** RevenueCat (free until $2,500/mo MTR, then 1%)
 **Footprint target:** <30 MB RAM, <0.5% CPU
 **Min OS:** macOS 14 (Sonoma)
 **Sandboxing:** NOT on Mac App Store (needs full process access, Docker socket, SMART data)
+**Website:** Next.js on Vercel (static generation for programmatic SEO pages)
 
 ## Revenue Milestones
 
 | Milestone | Target |
 |-----------|--------|
+| Launch phase | All features free — build user base |
 | GitHub stars | 500 in first month |
 | Free users | 5,000 in 3 months |
-| Pro conversions | 5% = 250 paid ($3,000) |
-| Steady state (12 mo) | 2,000 Pro users ($24,000/yr) |
-| Stretch (24 mo) | 10,000 Pro ($120,000/yr) |
+| Monetization activation | After 5K users or 3 months, whichever first |
+| Pro conversion rate | 5-8% (RevenueCat benchmark for dev tools) |
+| Year 1 ARR (moderate) | $14,000 (64 annual subs/mo at $36/yr) |
+| Year 1 ARR (aggressive) | $65,000 (300 annual subs/mo at $36/yr) |
+| RevenueCat paid tier | Triggers at ~$2,500/mo MTR (~70 new annual subs/mo) |
 
 ## Name Rationale
 
