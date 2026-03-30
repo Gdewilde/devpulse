@@ -943,18 +943,26 @@ struct QuickCleanRow: View {
                     Image(systemName: "checkmark.circle")
                         .font(.system(size: 9))
                         .foregroundStyle(.green)
-                    Text("Freed \(result.freedFormatted)")
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(.green)
+                    if result.totalFreedMB > 0 {
+                        Text("Freed \(result.freedFormatted)")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(.green)
+                    } else if !result.results.isEmpty {
+                        Text("All clean")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(.green)
+                    } else {
+                        Text("Nothing to clean")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
                     ForEach(result.results, id: \.action) { r in
-                        if r.success {
-                            Text(r.action)
-                                .font(.system(size: 8))
-                                .foregroundStyle(.tertiary)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1)
-                                .background(.quaternary.opacity(0.3), in: Capsule())
-                        }
+                        Text(r.detail)
+                            .font(.system(size: 8))
+                            .foregroundStyle(.tertiary)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(.quaternary.opacity(0.3), in: Capsule())
                     }
                     Spacer()
                 }
