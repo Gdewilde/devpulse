@@ -1,10 +1,10 @@
 #!/bin/bash
-# install.sh — Set up automated memory health checks via launchd
+# install.sh — Set up automated DevPulse checks via launchd
 # Usage: ./install.sh [--interval MINUTES] [--fix] [--uninstall]
 
 set -euo pipefail
 
-LABEL="com.gj.mem-check"
+LABEL="com.gj.devpulse"
 PLIST_PATH="$HOME/Library/LaunchAgents/${LABEL}.plist"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SCRIPT_PATH="${SCRIPT_DIR}/mem-check.sh"
@@ -37,7 +37,7 @@ mkdir -p "$LOG_DIR"
 mkdir -p "$(dirname "$PLIST_PATH")"
 chmod +x "$SCRIPT_PATH"
 
-echo "Installing memory health check..."
+echo "Installing DevPulse check..."
 echo "  Script:   $SCRIPT_PATH"
 echo "  Interval: $((INTERVAL / 60)) minutes"
 echo "  Auto-fix: $AUTO_FIX"

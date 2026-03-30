@@ -4,3 +4,6 @@ build/
 *.d
 *.swp
 .DS_Store
+*.dmg
+*.zip
+website-next/

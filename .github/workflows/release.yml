@@ -1,0 +1,121 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  build-and-release:
+    runs-on: macos-14
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        run: echo "VERSION=$(cat VERSION | tr -d '[:space:]')" >> $GITHUB_ENV
+
+      - name: Build universal binary
+        run: |
+          cd DevPulse.app
+          swift build -c release --arch arm64 --arch x86_64
+
+      - name: Create app bundle
+        run: |
+          APP_BUNDLE="build/DevPulse.app"
+          rm -rf "$APP_BUNDLE"
+          mkdir -p "$APP_BUNDLE/Contents/MacOS"
+          mkdir -p "$APP_BUNDLE/Contents/Resources"
+          cp "DevPulse.app/.build/apple/Products/Release/DevPulse" "$APP_BUNDLE/Contents/MacOS/"
+
+          BUILD_TIME=$(date '+%Y-%m-%d %H:%M:%S')
+          cat > "$APP_BUNDLE/Contents/Info.plist" << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleName</key><string>DevPulse</string>
+              <key>CFBundleDisplayName</key><string>DevPulse</string>
+              <key>CFBundleIdentifier</key><string>com.gj.devpulse</string>
+              <key>CFBundleVersion</key><string>${VERSION}</string>
+              <key>CFBundleShortVersionString</key><string>${VERSION}</string>
+              <key>CFBundleExecutable</key><string>DevPulse</string>
+              <key>CFBundlePackageType</key><string>APPL</string>
+              <key>LSMinimumSystemVersion</key><string>14.0</string>
+              <key>LSUIElement</key><true/>
+              <key>NSHighResolutionCapable</key><true/>
+              <key>BuildTimestamp</key><string>${BUILD_TIME}</string>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Import signing certificate
+        if: env.DEVELOPER_ID_CERT_BASE64 != ''
+        env:
+          DEVELOPER_ID_CERT_BASE64: ${{ secrets.DEVELOPER_ID_CERT_BASE64 }}
+          DEVELOPER_ID_CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+        run: |
+          echo "$DEVELOPER_ID_CERT_BASE64" | base64 --decode > cert.p12
+          security create-keychain -p runner build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p runner build.keychain
+          security import cert.p12 -k build.keychain -P "$DEVELOPER_ID_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k runner build.keychain
+          rm cert.p12
+
+      - name: Code sign
+        run: |
+          IDENTITY="${DEVELOPER_ID_IDENTITY:--}"
+          if [[ "$IDENTITY" == "-" ]]; then
+            codesign --force --deep --sign - build/DevPulse.app
+          else
+            codesign --force --options runtime --sign "$IDENTITY" --timestamp --deep build/DevPulse.app
+          fi
+        env:
+          DEVELOPER_ID_IDENTITY: ${{ secrets.DEVELOPER_ID_IDENTITY }}
+
+      - name: Create DMG
+        run: |
+          brew install create-dmg
+          mkdir -p build/dmg-staging
+          cp -r build/DevPulse.app build/dmg-staging/
+          create-dmg \
+            --volname "DevPulse ${{ env.VERSION }}" \
+            --window-pos 200 120 \
+            --window-size 660 400 \
+            --icon-size 80 \
+            --icon "DevPulse.app" 180 170 \
+            --hide-extension "DevPulse.app" \
+            --app-drop-link 480 170 \
+            --no-internet-enable \
+            "build/DevPulse-${{ env.VERSION }}-universal.dmg" \
+            build/dmg-staging/ || true
+          rm -rf build/dmg-staging
+
+      - name: Notarize
+        if: env.NOTARY_APPLE_ID != ''
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+        run: |
+          xcrun notarytool submit "build/DevPulse-${{ env.VERSION }}-universal.dmg" \
+            --apple-id "$NOTARY_APPLE_ID" \
+            --team-id "$NOTARY_TEAM_ID" \
+            --password "$NOTARY_PASSWORD" \
+            --wait
+          xcrun stapler staple "build/DevPulse-${{ env.VERSION }}-universal.dmg"
+
+      - name: Verify
+        run: |
+          echo "Binary architecture:"
+          lipo -info build/DevPulse.app/Contents/MacOS/DevPulse
+          echo "DMG size:"
+          du -h "build/DevPulse-${{ env.VERSION }}-universal.dmg"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/DevPulse-${{ env.VERSION }}-universal.dmg
+          generate_release_notes: true

@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevPulse — Your Mac is lying about its RAM</title>
+    <meta name="description" content="The only Mac performance tool that understands your dev workflow. Kill zombie processes, catch Docker waste, and find out if you actually need a new Mac.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0A0A0B;
+            --bg-raised: #141416;
+            --bg-card: #1A1A1E;
+            --border: #2A2A2E;
+            --text: #E8E8ED;
+            --text-secondary: #8E8E93;
+            --text-tertiary: #5A5A5E;
+            --green: #34D399;
+            --green-dim: rgba(52, 211, 153, 0.12);
+            --orange: #FB923C;
+            --orange-dim: rgba(251, 146, 60, 0.12);
+            --red: #F87171;
+            --red-dim: rgba(248, 113, 113, 0.12);
+            --blue: #60A5FA;
+            --purple: #A78BFA;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Nav */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 16px 0;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            background: rgba(10, 10, 11, 0.8);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-inner {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .nav-logo {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .nav-logo .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .nav-links { display: flex; align-items: center; gap: 32px; }
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--text); }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-primary {
+            background: var(--green);
+            color: #0A0A0B;
+        }
+        .btn-primary:hover {
+            background: #4AE8AD;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(52, 211, 153, 0.3);
+        }
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover {
+            color: var(--text);
+            border-color: var(--text-tertiary);
+        }
+        .btn-sm { padding: 8px 16px; font-size: 13px; }
+
+        /* Sections */
+        section { padding: 120px 24px; }
+        .container { max-width: 1120px; margin: 0 auto; }
+        .section-label {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--green);
+            margin-bottom: 16px;
+        }
+
+        /* Hero */
+        .hero {
+            padding-top: 160px;
+            padding-bottom: 80px;
+            text-align: center;
+        }
+        .hero h1 {
+            font-size: clamp(40px, 6vw, 72px);
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -0.03em;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, #FFFFFF 0%, #A0A0A5 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero p {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto 40px;
+            line-height: 1.7;
+        }
+        .hero-ctas {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .hero-meta {
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+        .hero-meta span { color: var(--text-secondary); }
+
+        /* App preview */
+        .app-preview {
+            max-width: 420px;
+            margin: 60px auto 0;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: var(--bg-raised);
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .preview-header {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+        .preview-header .big { font-size: 36px; font-weight: 800; }
+        .preview-header .sub { font-size: 14px; color: var(--text-tertiary); }
+        .preview-header .pct { font-size: 14px; font-weight: 600; color: var(--green); margin-left: auto; }
+        .preview-bar {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border);
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+        .preview-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, var(--green), #2DD4BF);
+            width: 57%;
+        }
+        .preview-stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 16px;
+        }
+        .preview-stat-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-tertiary);
+        }
+        .preview-stat-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        .preview-verdict {
+            background: var(--green-dim);
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-bottom: 14px;
+        }
+        .verdict-q {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-tertiary);
+            margin-bottom: 4px;
+        }
+        .verdict-a {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--green);
+        }
+        .verdict-detail {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            line-height: 1.5;
+        }
+        .preview-proc {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+        }
+        .preview-proc-name { font-size: 13px; }
+        .preview-proc-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .preview-proc-val.red { color: var(--red); }
+        .preview-proc-val.orange { color: var(--orange); }
+        .preview-proc-val.dim { color: var(--text-secondary); }
+
+        /* Trust bar */
+        .trust-bar {
+            padding: 40px 24px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+        .trust-bar p {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            margin-bottom: 20px;
+        }
+        .trust-logos {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 36px;
+            flex-wrap: wrap;
+        }
+        .trust-logo {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            opacity: 0.6;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .trust-logo svg { width: 20px; height: 20px; fill: currentColor; }
+
+        /* Feature sections */
+        .feature-section { border-bottom: 1px solid var(--border); }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+        .feature-grid.reverse .feature-text { order: 2; }
+        .feature-grid.reverse .feature-visual { order: 1; }
+        .feature-text h2 {
+            font-size: 36px;
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+            margin-bottom: 16px;
+        }
+        .feature-text p {
+            font-size: 16px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 20px;
+        }
+        .feature-visual {
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: var(--bg-raised);
+            padding: 24px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+        }
+
+        /* Process demo */
+        .demo-procs { display: flex; flex-direction: column; gap: 2px; }
+        .demo-proc {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: background 0.15s;
+        }
+        .demo-proc:hover { background: rgba(255,255,255,0.03); }
+        .demo-proc-name { font-size: 13px; }
+        .demo-proc-detail { font-size: 11px; color: var(--text-tertiary); margin-left: 8px; }
+        .demo-proc-mem {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .tag {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+        .tag-red { background: var(--red-dim); color: var(--red); }
+        .tag-orange { background: var(--orange-dim); color: var(--orange); }
+        .tag-green { background: var(--green-dim); color: var(--green); }
+
+        /* Gimmick sections */
+        .gimmick {
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+        .gimmick h2 {
+            font-size: clamp(32px, 4vw, 52px);
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 16px;
+        }
+        .gimmick .subtitle {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 560px;
+            margin: 0 auto 48px;
+        }
+
+        /* Verdict cards */
+        .verdict-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .v-card {
+            border-radius: 16px;
+            padding: 24px;
+            text-align: left;
+            border: 1px solid var(--border);
+        }
+        .v-card-green { background: var(--green-dim); border-color: rgba(52, 211, 153, 0.2); }
+        .v-card-orange { background: var(--orange-dim); border-color: rgba(251, 146, 60, 0.2); }
+        .v-card-red { background: var(--red-dim); border-color: rgba(248, 113, 113, 0.2); }
+        .v-card .emoji { font-size: 28px; margin-bottom: 12px; }
+        .v-card .v-answer {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .v-card-green .v-answer { color: var(--green); }
+        .v-card-orange .v-answer { color: var(--orange); }
+        .v-card-red .v-answer { color: var(--red); }
+        .v-card .v-reason {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        .v-card .v-spec {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-tertiary);
+            margin-top: 12px;
+        }
+
+        /* Model table */
+        .model-table {
+            max-width: 700px;
+            margin: 0 auto;
+            text-align: left;
+        }
+        .model-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .model-table th {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-tertiary);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+        .model-table td {
+            padding: 10px 16px;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+        .model-table tr:hover td { background: rgba(255,255,255,0.02); }
+        .model-name { font-weight: 500; }
+        .model-quant {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+        .model-ram {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        .status-dot.green { background: var(--green); }
+        .status-dot.orange { background: var(--orange); }
+        .status-dot.red { background: var(--red); }
+        .model-note {
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-tertiary);
+            margin-top: 24px;
+        }
+
+        /* Pricing */
+        .pricing { text-align: center; }
+        .pricing h2 {
+            font-size: 40px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
+        }
+        .pricing .subtitle {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 48px;
+        }
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 680px;
+            margin: 0 auto;
+        }
+        .price-card {
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: var(--bg-raised);
+            padding: 32px;
+            text-align: left;
+            position: relative;
+            transition: border-color 0.2s;
+        }
+        .price-card:hover { border-color: var(--text-tertiary); }
+        .price-card.featured {
+            border-color: var(--green);
+            box-shadow: 0 0 40px rgba(52, 211, 153, 0.08);
+        }
+        .price-card .badge {
+            position: absolute;
+            top: -10px;
+            right: 20px;
+            background: var(--green);
+            color: var(--bg);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+        .price-tier {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        .price-amount {
+            font-size: 40px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+        .price-note {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            margin-bottom: 24px;
+        }
+        .price-features {
+            list-style: none;
+            margin-bottom: 24px;
+        }
+        .price-features li {
+            font-size: 14px;
+            color: var(--text-secondary);
+            padding: 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .price-features li::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            flex-shrink: 0;
+        }
+        .price-card .btn { width: 100%; justify-content: center; }
+
+        /* Auto-optimizer section */
+        .optimizer-visual {
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: var(--bg-raised);
+            padding: 20px;
+            max-width: 440px;
+        }
+        .opt-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .opt-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        .opt-title { font-size: 13px; font-weight: 600; }
+        .opt-sub { font-size: 11px; color: var(--text-tertiary); margin-left: auto; }
+        .opt-log {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            line-height: 1.8;
+        }
+        .opt-log-time { color: var(--text-tertiary); }
+        .opt-log-action { color: var(--text-secondary); }
+        .opt-log-result { color: var(--green); }
+        .opt-stats {
+            display: flex;
+            gap: 16px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        .opt-stat { text-align: center; flex: 1; }
+        .opt-stat-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--green);
+        }
+        .opt-stat-label {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-top: 2px;
+        }
+
+        /* Footer */
+        footer {
+            padding: 60px 24px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+        footer p {
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+        footer a { color: var(--text-secondary); text-decoration: none; }
+        footer a:hover { color: var(--text); }
+
+        /* Animations */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .feature-grid { grid-template-columns: 1fr; gap: 40px; }
+            .feature-grid.reverse .feature-text { order: 1; }
+            .feature-grid.reverse .feature-visual { order: 2; }
+            .verdict-cards { grid-template-columns: 1fr; max-width: 360px; }
+            .pricing-grid { grid-template-columns: 1fr; max-width: 360px; }
+            .nav-links a:not(.btn) { display: none; }
+            section { padding: 80px 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+    <div class="nav-inner">
+        <a href="#" class="nav-logo"><span class="dot"></span> DevPulse</a>
+        <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#new-mac">Do I Need a New Mac?</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#download" class="btn btn-primary btn-sm">Download Free</a>
+        </div>
+    </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+    <div class="container">
+        <p class="section-label">Mac Performance for Developers</p>
+        <h1>Your Mac isn't slow.<br>It's suffocating.</h1>
+        <p>DevPulse lives in your menu bar, hunts memory hogs, kills zombie processes, and tells you whether to optimize or upgrade. Built for developers who'd rather ship code than babysit Activity Monitor.</p>
+        <div class="hero-ctas">
+            <a href="#download" class="btn btn-primary">Download Free</a>
+            <a href="https://github.com/user/devpulse" class="btn btn-secondary">View on GitHub</a>
+        </div>
+        <p class="hero-meta">macOS 14+ &middot; Apple Silicon &middot; <span>&lt;30 MB memory</span> &middot; No telemetry</p>
+
+        <!-- App preview mockup -->
+        <div class="app-preview fade-in">
+            <div class="preview-header">
+                <span class="big">37</span>
+                <span class="sub">/ 64 GB</span>
+                <span class="pct">57%</span>
+            </div>
+            <div class="preview-bar"><div class="preview-bar-fill"></div></div>
+            <div class="preview-stats">
+                <div><div class="preview-stat-label">Free</div><div class="preview-stat-val">26.5 GB</div></div>
+                <div><div class="preview-stat-label">Compressed</div><div class="preview-stat-val">4.8 GB</div></div>
+                <div><div class="preview-stat-label">Swap</div><div class="preview-stat-val">6.9 GB</div></div>
+            </div>
+            <div class="preview-verdict">
+                <div class="verdict-q">Do I need a new Mac?</div>
+                <div class="verdict-a">Nope, you're good.</div>
+                <div class="verdict-detail">Peak 53 GB on 64 GB. Chrome is eating 22 GB but that's a Chrome problem, not a hardware problem.</div>
+            </div>
+            <div class="preview-proc">
+                <span class="preview-proc-name">Chrome (59)</span>
+                <span class="preview-proc-val red">22.5 GB</span>
+            </div>
+            <div class="preview-proc">
+                <span class="preview-proc-name">Cursor (23)</span>
+                <span class="preview-proc-val orange">5.1 GB</span>
+            </div>
+            <div class="preview-proc">
+                <span class="preview-proc-name">Claude CLI (8)</span>
+                <span class="preview-proc-val orange">4.5 GB</span>
+            </div>
+            <div class="preview-proc">
+                <span class="preview-proc-name">Notion (8)</span>
+                <span class="preview-proc-val orange">3.0 GB</span>
+            </div>
+            <div class="preview-proc">
+                <span class="preview-proc-name">Slack (6)</span>
+                <span class="preview-proc-val dim">981 MB</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Trust bar -->
+<div class="trust-bar">
+    <p>Monitors the tools you actually use</p>
+    <div class="trust-logos">
+        <span class="trust-logo">Docker</span>
+        <span class="trust-logo">Chrome</span>
+        <span class="trust-logo">VS Code</span>
+        <span class="trust-logo">Cursor</span>
+        <span class="trust-logo">Xcode</span>
+        <span class="trust-logo">Slack</span>
+        <span class="trust-logo">Node.js</span>
+        <span class="trust-logo">Ollama</span>
+    </div>
+</div>
+
+<!-- Feature 1: See what's happening -->
+<section class="feature-section" id="features">
+    <div class="container">
+        <div class="feature-grid fade-in">
+            <div class="feature-text">
+                <p class="section-label">Process Intelligence</p>
+                <h2>See what's actually eating your RAM</h2>
+                <p>Not just process names. DevPulse groups by project, detects app families (Chrome's 59 helper processes become one line), and attributes node processes to the project that spawned them.</p>
+                <p>Click any process to see the full breakdown. Right there in the popover. No Activity Monitor needed.</p>
+            </div>
+            <div class="feature-visual">
+                <div class="demo-procs">
+                    <div class="demo-proc">
+                        <div>
+                            <span class="demo-proc-name">Chrome (59)</span>
+                            <span class="demo-proc-detail">41 tabs, 12 extensions</span>
+                        </div>
+                        <span class="demo-proc-mem" style="color: var(--red)">22.5 GB</span>
+                    </div>
+                    <div class="demo-proc">
+                        <div>
+                            <span class="demo-proc-name">unify (57)</span>
+                            <span class="demo-proc-detail">8 node, 2 tsserver</span>
+                        </div>
+                        <span class="demo-proc-mem" style="color: var(--text-secondary)">1.7 GB</span>
+                    </div>
+                    <div class="demo-proc">
+                        <div>
+                            <span class="demo-proc-name">Docker</span>
+                            <span class="tag tag-orange">idle</span>
+                        </div>
+                        <span class="demo-proc-mem" style="color: var(--orange)">4.0 GB reserved</span>
+                    </div>
+                    <div class="demo-proc">
+                        <div>
+                            <span class="demo-proc-name">Zombies</span>
+                            <span class="tag tag-red">7 orphaned</span>
+                        </div>
+                        <span class="demo-proc-mem" style="color: var(--red)">209 MB</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Feature 2: Auto-Optimizer -->
+<section class="feature-section">
+    <div class="container">
+        <div class="feature-grid reverse fade-in">
+            <div class="feature-text">
+                <p class="section-label">Background Agent</p>
+                <h2>It optimizes while you code</h2>
+                <p>The auto-optimizer runs every 5 minutes. It kills zombie processes, alerts you about idle dev servers, and warns when Chrome is leaking memory. You don't have to think about it.</p>
+                <p>Every action is logged. Every byte freed is tracked. Toggle it on or off anytime.</p>
+            </div>
+            <div class="feature-visual">
+                <div class="optimizer-visual" style="border:none; padding:0; background:none; max-width:100%;">
+                    <div class="opt-header">
+                        <div class="opt-dot"></div>
+                        <span class="opt-title">Auto-Optimizer</span>
+                        <span class="opt-sub">running</span>
+                    </div>
+                    <div class="opt-log">
+                        <div><span class="opt-log-time">2m ago</span> <span class="opt-log-action">Killed 4 zombies from unify</span> <span class="opt-log-result">+340 MB</span></div>
+                        <div><span class="opt-log-time">7m ago</span> <span class="opt-log-action">Chrome warning: 18.2 GB (47 tabs)</span></div>
+                        <div><span class="opt-log-time">32m ago</span> <span class="opt-log-action">Killed 2 zombies from api-server</span> <span class="opt-log-result">+128 MB</span></div>
+                        <div><span class="opt-log-time">1h ago</span> <span class="opt-log-action">Flagged idle: open-banking-app</span></div>
+                        <div><span class="opt-log-time">1h ago</span> <span class="opt-log-action">Killed 6 zombies</span> <span class="opt-log-result">+892 MB</span></div>
+                    </div>
+                    <div class="opt-stats">
+                        <div class="opt-stat">
+                            <div class="opt-stat-val">12</div>
+                            <div class="opt-stat-label">Zombies killed</div>
+                        </div>
+                        <div class="opt-stat">
+                            <div class="opt-stat-val">1.3 GB</div>
+                            <div class="opt-stat-label">Memory freed</div>
+                        </div>
+                        <div class="opt-stat">
+                            <div class="opt-stat-val">3</div>
+                            <div class="opt-stat-label">Chrome alerts</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Feature 3: Chrome + Docker -->
+<section class="feature-section">
+    <div class="container">
+        <div class="feature-grid fade-in">
+            <div class="feature-text">
+                <p class="section-label">Developer-Aware</p>
+                <h2>Chrome and Docker: caught red-handed</h2>
+                <p>Chrome gets its own intelligence panel: tab count, per-renderer memory, extension overhead, average MB per tab. One click to open Chrome's Task Manager or Memory Saver settings.</p>
+                <p>Docker shows VM reservation vs actual container usage. When Docker Desktop is hoarding 6 GB for one container using 400 MB, you'll know.</p>
+            </div>
+            <div class="feature-visual">
+                <div style="margin-bottom: 16px;">
+                    <div style="font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">Chrome Breakdown</div>
+                    <div class="demo-proc"><span class="demo-proc-name">41 tabs in 3 windows</span><span class="demo-proc-mem" style="color:var(--text-tertiary)">~380 MB/tab</span></div>
+                    <div class="demo-proc"><span class="demo-proc-name">Tab renderers (41)</span><span class="demo-proc-mem" style="color:var(--text-secondary)">15.6 GB</span></div>
+                    <div class="demo-proc"><span class="demo-proc-name">Extensions (12)</span><span class="demo-proc-mem" style="color:var(--text-secondary)">2.1 GB</span></div>
+                    <div class="demo-proc"><span class="demo-proc-name">GPU process</span><span class="demo-proc-mem" style="color:var(--text-secondary)">1.8 GB</span></div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <span class="tag tag-green" style="font-size:11px; padding:4px 10px; cursor:pointer;">Task Manager</span>
+                    <span class="tag tag-green" style="font-size:11px; padding:4px 10px; cursor:pointer;">Memory Saver</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Gimmick 1: Do I Need a New Mac? -->
+<section class="gimmick" id="new-mac">
+    <div class="container">
+        <p class="section-label">The Honest Answer</p>
+        <h2>Do I need a new Mac?</h2>
+        <p class="subtitle">DevPulse tracks your peak memory over 7 days, calculates how much is waste, and gives you a straight answer. No upselling. No BS.</p>
+
+        <div class="verdict-cards fade-in">
+            <div class="v-card v-card-green">
+                <div class="emoji">😎</div>
+                <div class="v-answer">Absolutely not.</div>
+                <div class="v-reason">You peaked at 42 GB on a 64 GB Mac. Even with Chrome hogging 18 GB, you have headroom for days.</div>
+                <div class="v-spec">Peak: 42G &middot; Waste: 6G &middot; Optimized: 36G</div>
+            </div>
+            <div class="v-card v-card-orange">
+                <div class="emoji">😬</div>
+                <div class="v-answer">Not yet. Clean up first.</div>
+                <div class="v-reason">Peak 58 GB with 12 GB reclaimable. Biggest culprit: 4.2 GB in idle dev servers. Fix that before shopping.</div>
+                <div class="v-spec">Peak: 58G &middot; Waste: 12G &middot; Optimized: 46G</div>
+            </div>
+            <div class="v-card v-card-red">
+                <div class="emoji">💸</div>
+                <div class="v-answer">Yeah, probably.</div>
+                <div class="v-reason">Even optimized you'd use 61 GB on a 64 GB Mac. A 96 GB machine would give you breathing room.</div>
+                <div class="v-spec">Peak: 63G &middot; Waste: 2G &middot; Optimized: 61G</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Gimmick 2: Can I Run? -->
+<section class="gimmick" id="can-i-run">
+    <div class="container">
+        <p class="section-label">Local AI Models</p>
+        <h2>Can I run it?</h2>
+        <p class="subtitle">Based on your actual RAM usage and recoverable waste, DevPulse tells you which AI models your Mac can handle. No guessing, no spec sheets.</p>
+
+        <div class="model-table fade-in">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Quant</th>
+                        <th>RAM</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="model-name">Llama 3.1 8B</td>
+                        <td class="model-quant">Q8_0</td>
+                        <td class="model-ram">9.5 GB</td>
+                        <td><span class="status-dot green"></span>Runs great</td>
+                    </tr>
+                    <tr>
+                        <td class="model-name">Qwen 2.5 14B</td>
+                        <td class="model-quant">Q4_K_M</td>
+                        <td class="model-ram">9.5 GB</td>
+                        <td><span class="status-dot green"></span>Runs great</td>
+                    </tr>
+                    <tr>
+                        <td class="model-name">DeepSeek R1 32B</td>
+                        <td class="model-quant">Q4_K_M</td>
+                        <td class="model-ram">20 GB</td>
+                        <td><span class="status-dot green"></span>Runs OK</td>
+                    </tr>
+                    <tr>
+                        <td class="model-name">Llama 3.3 70B</td>
+                        <td class="model-quant">Q4_K_M</td>
+                        <td class="model-ram">42 GB</td>
+                        <td><span class="status-dot orange"></span>After cleanup</td>
+                    </tr>
+                    <tr>
+                        <td class="model-name">Qwen 2.5 72B</td>
+                        <td class="model-quant">Q4_K_M</td>
+                        <td class="model-ram">44 GB</td>
+                        <td><span class="status-dot red"></span>Too heavy</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="model-note">20+ models checked. Results update as your memory usage changes.</p>
+        </div>
+    </div>
+</section>
+
+<!-- Pricing -->
+<section class="pricing" id="pricing">
+    <div class="container">
+        <p class="section-label">Pricing</p>
+        <h2>No subscription. Ever.</h2>
+        <p class="subtitle">Pay once, own it forever. Or use the free version — it's genuinely useful.</p>
+
+        <div class="pricing-grid fade-in">
+            <div class="price-card">
+                <div class="price-tier">Free</div>
+                <div class="price-amount">$0</div>
+                <div class="price-note">Free forever</div>
+                <ul class="price-features">
+                    <li>Menu bar memory monitor</li>
+                    <li>Per-project process grouping</li>
+                    <li>Process breakdown & quit</li>
+                    <li>Swap trend tracking</li>
+                    <li>Overhead detection</li>
+                </ul>
+                <a href="#download" class="btn btn-secondary" style="width:100%; justify-content:center;">Download Free</a>
+            </div>
+            <div class="price-card featured">
+                <div class="badge">Popular</div>
+                <div class="price-tier">Pro</div>
+                <div class="price-amount">$12</div>
+                <div class="price-note">One-time purchase</div>
+                <ul class="price-features">
+                    <li>Everything in Free</li>
+                    <li>"Do I Need a New Mac?" verdict</li>
+                    <li>"Can I Run?" AI model checker</li>
+                    <li>Auto-Optimizer agent</li>
+                    <li>Zombie auto-kill</li>
+                    <li>Chrome intelligence</li>
+                    <li>Docker waste detection</li>
+                    <li>Weekly summary reports</li>
+                    <li>RAM Report panel</li>
+                </ul>
+                <a href="#download" class="btn btn-primary" style="width:100%; justify-content:center;">Get Pro — $12</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Download CTA -->
+<section id="download" style="text-align: center; border-bottom: 1px solid var(--border);">
+    <div class="container">
+        <h2 style="font-size: 36px; font-weight: 800; margin-bottom: 12px;">Ready to see what's eating your Mac?</h2>
+        <p style="font-size: 16px; color: var(--text-secondary); margin-bottom: 32px;">Download DevPulse. It takes 2 seconds. Uses less RAM than this webpage.</p>
+        <div class="hero-ctas">
+            <a href="#" class="btn btn-primary" style="padding: 14px 32px; font-size: 16px;">Download for macOS</a>
+        </div>
+        <p class="hero-meta" style="margin-top: 16px;">Requires macOS 14 Sonoma or later &middot; Apple Silicon &amp; Intel &middot; <span>No App Store required</span></p>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer>
+    <p>DevPulse &middot; Built by <a href="#">@gj</a> &middot; <a href="https://github.com/user/devpulse">GitHub</a> &middot; <a href="mailto:hello@devpulse.app">Contact</a></p>
+    <p style="margin-top: 8px; font-size: 11px; color: var(--text-tertiary);">No analytics. No tracking. No data leaves your Mac.</p>
+</footer>
+
+<script>
+// Scroll-triggered fade-in
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+        }
+    });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+// Smooth scroll for nav links
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function(e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    });
+});
+</script>
+
+</body>
+</html>

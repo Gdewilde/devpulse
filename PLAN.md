@@ -21,6 +21,7 @@ Developers running heavy workloads on Mac: multiple IDE workspaces, Electron app
 | Per-project memory | - | - | - | Yes |
 | Developer-aware grouping | - | - | - | Yes |
 | "Do you need more RAM?" | - | - | - | Yes |
+| "Can I run this AI model?" | - | - | - | Yes |
 | Zombie process detection | - | - | - | Yes |
 | Docker memory waste | - | - | - | Yes |
 | Dev cache cleanup | - | - | - | Yes |
@@ -61,19 +62,25 @@ The first feature nobody else has. Make it immediately useful.
 
 This is the headline feature. Analyze usage patterns and give a verdict.
 
-- [ ] Track peak memory over rolling 7 days
-- [ ] Calculate "optimized memory" = peak minus waste:
-      - Zombie processes (recoverable)
-      - Docker VM overhead vs actual container usage (recoverable)
-      - Duplicate Electron runtimes across apps (not recoverable but educatable)
-      - Inactive project dev servers still running (recoverable)
-      - DerivedData / build caches in RAM (recoverable)
-- [ ] Verdict engine:
-      - "You're using 58 GB peak, but 19 GB is waste. After cleanup you'd peak at 39 GB. Your 64 GB Mac is fine."
-      - "You're using 61 GB peak with only 3 GB waste. You genuinely need your RAM. Consider closing 2 Cursor workspaces or upgrading."
-      - "You're at 42 GB peak on a 64 GB Mac. You have plenty of headroom. Your swap is from a memory leak in Chrome — restart it weekly."
-- [ ] Show this as a dedicated "RAM Report" panel (Cmd+Shift+M hotkey)
-- [ ] Weekly summary notification: "This week: peak 54 GB, 12 GB recoverable waste"
+- [x] Track peak memory over rolling 7 days
+- [x] Calculate "optimized memory" = peak minus waste:
+      - Zombie processes (recoverable) ✓
+      - Docker VM overhead vs actual container usage (recoverable) ✓
+      - Duplicate Electron runtimes across apps (not recoverable but educatable) ✓
+      - Inactive project dev servers still running (recoverable) ✓
+      - DerivedData / build caches detection ✓
+- [x] Verdict engine with context-aware messages:
+      - Identifies biggest waste source and suggests specific action
+      - Four rating tiers: plenty, fine, tight, needs more
+      - Waste breakdown by source (zombies, Docker, Electron, idle servers)
+- [x] Show this as a dedicated "RAM Report" panel (Cmd+Shift+M hotkey)
+- [x] Weekly summary notification: "This week: peak 54 GB, 12 GB recoverable waste"
+- [x] "Can I Run?" local AI model checker (inspired by https://www.canirun.ai/)
+      - 20+ models: Llama, Qwen, Mistral, DeepSeek, Gemma, Phi, CodeLlama, etc.
+      - Shows feasibility: runs great / runs OK / after cleanup / too heavy
+      - Suggests best quantization level per model
+      - Links to Ollama and LM Studio for setup
+      - Full model list in "See All Models" submenu
 
 ### Phase 4: Smart Cleanups (v1.3)
 
@@ -92,10 +99,10 @@ One-click actions that save real memory.
 
 Docker Desktop is the #2 developer memory complaint after Electron.
 
-- [ ] Detect Docker Desktop running + VM memory reservation
-- [ ] Query `docker stats` for actual per-container memory
-- [ ] Show waste: "Docker VM: 6.2 GB reserved, containers using 1.8 GB (4.4 GB wasted)"
-- [ ] Detect idle Docker (no containers running but VM still up)
+- [x] Detect Docker Desktop running + VM memory reservation
+- [x] Query `docker stats` for actual per-container memory
+- [x] Show waste: "Docker VM: 6.2 GB reserved, containers using 1.8 GB (4.4 GB wasted)"
+- [x] Detect idle Docker (no containers running but VM still up)
 - [ ] "Restart Docker VM" action (reclaims memory, containers restart)
 - [ ] Surface OrbStack as alternative when waste is chronic
 - [ ] Support Apple Containers (macOS 26) when available
