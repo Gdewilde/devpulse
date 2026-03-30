@@ -1,5 +1,5 @@
 #!/bin/bash
-# mem-check.sh — macOS Memory Health Check & Auto-Cleanup
+# mem-check.sh — DevPulse: macOS Memory Health Check & Auto-Cleanup
 # Usage: ./mem-check.sh [--fix] [--quiet]
 #
 # --fix    Automatically kill/restart bloated apps

@@ -1,107 +1,105 @@
-# macOS Memory Health Check
+# DevPulse
 
-Automated memory monitoring and cleanup for macOS. Detects memory pressure, swap thrashing, and bloated apps — then optionally fixes them.
+The only Mac performance tool that understands your dev workflow.
 
-## Quick Start
+DevPulse lives in your menu bar and tells you what's actually eating your RAM — per-project, per-app, with one-click actions. It knows the difference between Chrome's 59 helper processes and your IDE, detects zombie processes, catches Docker waste, and answers the question every developer asks: **"Do I need a new Mac?"**
 
-```bash
-# Make scripts executable
-chmod +x mem-check.sh install.sh
+## Features
 
-# Run a one-time check
-./mem-check.sh
+**Memory Intelligence**
+- Real-time memory, swap, and compression tracking
+- Per-project process grouping (node processes attributed to the project that spawned them)
+- App family aggregation (Chrome's 59 processes → one line showing 22.5 GB)
+- Expandable breakdowns with subprocess types and memory per type
 
-# Run and auto-fix bloated apps
-./mem-check.sh --fix
-```
+**Chrome & Docker Awareness**
+- Chrome tab count, renderer/extension memory split, avg MB per tab
+- One-click Chrome Task Manager and Memory Saver access
+- Docker VM reservation vs actual container usage
+- Idle Docker detection (VM running, no containers)
 
-## What It Checks
+**Zombie Hunter**
+- Detects orphaned dev processes (node, tsserver, LSPs, build tools)
+- Per-project zombie grouping with one-click kill
+- Background auto-optimizer kills zombies automatically every 5 minutes
 
-| Check | What | Thresholds |
-|-------|------|-----------|
-| Memory pressure | % of RAM in use | Warning at 80% |
-| Swap usage | GB of swap consumed | Warning at 10 GB, critical at 30 GB |
-| Compressed memory | GB held by macOS compressor | Warning at 15 GB |
-| Process memory | Per-process RSS | Flags apps over 1500 MB |
-| Swap files | Count and disk usage of /var/vm/ | Informational |
+**"Do I Need a New Mac?"**
+- Tracks peak memory over 7 rolling days
+- Calculates waste: zombies + Docker overhead + Electron duplicates + idle dev servers
+- Gives a straight verdict: "Absolutely not." / "Not yet — clean up first." / "Yeah, probably."
+- Names specific culprits and suggests concrete actions
 
-## Auto-Fix Behavior (`--fix`)
+**"Can I Run?" Local AI Models**
+- 20+ models: Llama 3, Qwen 2.5, DeepSeek R1, Mistral, Gemma, Phi-4, CodeLlama
+- Shows feasibility per model based on your actual RAM usage
+- Factors in recoverable waste: "After cleanup, you could run Llama 3 70B Q4"
+- Links to Ollama and LM Studio
 
-When `--fix` is passed, the script will:
+**Auto-Optimizer Agent**
+- Background agent runs every 5 minutes
+- Auto-kills zombie processes, notifies about idle servers, warns about Chrome leaks
+- Tracks impact: zombies killed, memory freed, warnings sent
+- Toggle on/off from the popover
 
-- **Restart** safe apps that are bloated (Finder, Ghostty, Terminal, iTerm2)
-- **Send a notification** for apps it won't kill (Chrome, Slack, Spotify, Notion, Discord)
-- **Never touch** system processes, IDE processes, or anything not in the safe lists
+**RAM Report**
+- Full report panel via Cmd+Shift+M
+- System overview, verdict, waste breakdown, top processes, AI model compatibility
+- Weekly summary notification
 
-Edit the `RESTARTABLE_APPS` and `NOTIFY_ONLY_APPS` arrays in `mem-check.sh` to customize.
-
-## Automated Scheduling
-
-Install a launchd job that runs every 10 minutes:
-
-```bash
-# Monitor only (default: every 10 min)
-./install.sh
-
-# Monitor + auto-fix, every 5 minutes
-./install.sh --interval 5 --fix
-
-# Remove the scheduled job
-./install.sh --uninstall
-```
-
-### Managing the Schedule
+## Install
 
 ```bash
-# Check if it's running
-launchctl print gui/$(id -u)/com.gj.mem-check
-
-# View logs
-ls ~/.local/logs/mem-check/
-cat ~/.local/logs/mem-check/$(date +%Y-%m-%d).log
-
-# Temporarily stop
-launchctl bootout gui/$(id -u)/com.gj.mem-check
-
-# Re-enable
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.gj.mem-check.plist
+# Build and install
+git clone https://github.com/user/devpulse.git
+cd devpulse
+bash build.sh
 ```
 
-## Exit Codes
+Or with Homebrew (coming soon):
+```bash
+brew tap user/devpulse
+brew install --cask devpulse
+```
 
-| Code | Meaning |
-|------|---------|
-| 0 | Healthy |
-| 1 | Warning (elevated swap) |
-| 2 | Critical (swap thrashing or high pressure) |
+## Requirements
 
-Useful for chaining: `./mem-check.sh --quiet || notify-send "Memory warning"`
+- macOS 14 Sonoma or later
+- Apple Silicon or Intel
 
-## Tuning Thresholds
+## How It Works
 
-Edit the config section at the top of `mem-check.sh`:
+DevPulse is a native Swift app that runs in your menu bar. It uses:
+- Darwin APIs for memory stats (no shell commands for core metrics)
+- `ps` for process discovery and attribution
+- AppleScript for Chrome tab counting and graceful quit
+- `docker stats` for container memory
+- Local JSON storage for 7-day tracking (~30 KB)
+- macOS notifications for alerts
+
+**Footprint:** <30 MB RAM, <0.5% CPU.
+
+## Development
 
 ```bash
-SWAP_WARN_GB=10       # When to start worrying about swap
-SWAP_CRIT_GB=30       # When swap is dangerously high
-APP_WARN_MB=1500      # Flag individual apps above this
-PRESSURE_WARN_PCT=80  # Memory pressure warning threshold
+# Build and install (dev mode, ad-hoc signing)
+bash build.sh
+
+# Release build (with Developer ID)
+DEVELOPER_ID="Developer ID Application: ..." bash scripts/release.sh
 ```
 
-## Your System Context
-
-Based on your setup (64 GB RAM, macOS Sonoma):
-
-- **Ghostty** regularly balloons to 2+ GB — likely scrollback buffers from long-running processes. Add `scrollback-limit = 10000` to your Ghostty config.
-- **Finder** at 2+ GB is abnormal — usually caused by network drives, large Quick Look caches, or too many Finder windows. Restarting Finder is always safe.
-- **Chrome** — use a tab suspender extension. Each tab is a separate process.
-- **44 GB swap** with 64 GB RAM means total memory demand was ~100+ GB — no amount of RAM would prevent this without closing apps.
-
-## Log Rotation
-
-Logs are stored per-day in `~/.local/logs/mem-check/`. To auto-clean old logs:
-
-```bash
-# Add to crontab: delete logs older than 30 days
-0 0 * * * find ~/.local/logs/mem-check -name "*.log" -mtime +30 -delete
+Project structure:
 ```
+DevPulse.app/Sources/
+  DevPulseApp.swift    — App entry, status bar, popover, actions
+  PopoverView.swift    — SwiftUI popover UI
+  AppState.swift       — Observable state model
+  MemoryStats.swift    — System memory via Darwin APIs
+  TopProcesses.swift   — Process detection, grouping, Docker, Chrome, zombies
+  RAMAdvisor.swift     — 7-day tracking, verdicts, "Can I Run?" model database
+  AutoOptimizer.swift  — Background optimization agent
+```
+
+## License
+
+MIT

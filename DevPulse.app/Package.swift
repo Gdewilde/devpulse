@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "MemoryHealth",
+    name: "DevPulse",
     platforms: [.macOS(.v14)],
     targets: [
         .executableTarget(
-            name: "MemoryHealth",
+            name: "DevPulse",
             path: "Sources"
         )
     ]
