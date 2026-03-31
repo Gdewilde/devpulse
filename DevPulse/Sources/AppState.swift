@@ -56,6 +56,16 @@ struct OptimizerImpact {
     @Published var appsToLaunch: [String] = []
     @Published var learnedPatterns: [LearnedPattern] = []
 
+    // Update check
+    @Published var latestVersion: String? = nil
+    @Published var latestReleaseURL: String? = nil
+
+    var updateAvailable: Bool {
+        guard let latest = latestVersion else { return false }
+        let current = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+        return latest.compare(current, options: .numeric) == .orderedDescending
+    }
+
     private var previousSwapGB: Double? = nil
 
     func updateSwapTrend() {

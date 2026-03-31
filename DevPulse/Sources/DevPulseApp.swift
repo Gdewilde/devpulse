@@ -72,6 +72,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async { self?.appState.ssdHealth = health }
         }
 
+        // Check for updates
+        checkForUpdates()
+
         // Global hotkey: Cmd+Shift+M for RAM Report
         NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.modifierFlags.contains([.command, .shift]) && event.charactersIgnoringModifiers == "m" {
@@ -469,6 +472,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panel.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         settingsPanel = panel
+    }
+
+    // MARK: - Update Check
+
+    private func checkForUpdates() {
+        guard let url = URL(string: "https://api.github.com/repos/Gdewilde/devpulse/releases/latest") else { return }
+        var request = URLRequest(url: url)
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.timeoutInterval = 10
+
+        URLSession.shared.dataTask(with: request) { [weak self] data, _, _ in
+            guard let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let tagName = json["tag_name"] as? String,
+                  let htmlURL = json["html_url"] as? String else { return }
+
+            let version = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
+            DispatchQueue.main.async {
+                self?.appState.latestVersion = version
+                self?.appState.latestReleaseURL = htmlURL
+            }
+        }.resume()
     }
 
     // MARK: - Timeline Panel

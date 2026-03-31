@@ -11,6 +11,12 @@ DevPulse lives in your menu bar and tells you what's actually eating your RAM �
 - Per-project process grouping (node processes attributed to the project that spawned them)
 - App family aggregation (Chrome's 59 processes → one line showing 22.5 GB)
 - Expandable breakdowns with subprocess types and memory per type
+- Swap velocity tracking with thrashing prediction
+
+**GPU / VRAM Monitoring**
+- Real-time GPU memory tracking via Metal + IOKit (system-wide)
+- Shows GPU allocated and available headroom for local AI models
+- Unified memory awareness for Apple Silicon
 
 **Chrome & Docker Awareness**
 - Chrome tab count, renderer/extension memory split, avg MB per tab
@@ -20,8 +26,10 @@ DevPulse lives in your menu bar and tells you what's actually eating your RAM �
 
 **Zombie Hunter**
 - Detects orphaned dev processes (node, tsserver, LSPs, build tools)
+- Stale LSP and file watcher detection
 - Per-project zombie grouping with one-click kill
 - Background auto-optimizer kills zombies automatically every 5 minutes
+- Desktop notifications for new zombie detections
 
 **"Do I Need a New Mac?"**
 - Tracks peak memory over 7 rolling days
@@ -30,10 +38,21 @@ DevPulse lives in your menu bar and tells you what's actually eating your RAM �
 - Names specific culprits and suggests concrete actions
 
 **"Can I Run?" Local AI Models**
-- 20+ models: Llama 3, Qwen 2.5, DeepSeek R1, Mistral, Gemma, Phi-4, CodeLlama
-- Shows feasibility per model based on your actual RAM usage
+- 20+ models: Llama 3/4, Qwen 2.5, DeepSeek R1, Mistral, Gemma, Phi-4, CodeLlama
+- Shows feasibility per model based on your actual RAM and GPU usage
 - Factors in recoverable waste: "After cleanup, you could run Llama 3 70B Q4"
-- Links to Ollama and LM Studio
+- Click any model for Ollama links, `ollama pull` clipboard copy, and detail pages
+
+**Session Profiles**
+- Auto-detects your current workspace (Frontend, Backend, Full Stack, etc.)
+- One-click profile switching — quits unneeded apps, launches missing ones
+- Learning mode: observes your app patterns and suggests new profiles
+- Custom profile creation and editing in Settings
+
+**Smart Cleanups**
+- Quick Clean: one-click cleanup of zombies, Docker waste, and idle servers
+- Before/after feedback showing memory freed
+- SSD health monitoring (data written, lifetime tracking)
 
 **Auto-Optimizer Agent**
 - Background agent runs every 5 minutes
@@ -41,24 +60,25 @@ DevPulse lives in your menu bar and tells you what's actually eating your RAM �
 - Tracks impact: zombies killed, memory freed, warnings sent
 - Toggle on/off from the popover
 
-**RAM Report**
+**RAM Report & Timeline**
 - Full report panel via Cmd+Shift+M
-- System overview, verdict, waste breakdown, top processes, AI model compatibility
+- System overview, GPU stats, verdict, waste breakdown, top processes, AI model compatibility
+- Memory timeline with event detection (spikes, Docker starts, etc.)
 - Weekly summary notification
+
+**Auto-Update**
+- Checks GitHub releases on launch
+- Shows update badge in footer when a new version is available
 
 ## Install
 
+Download the latest DMG from [Releases](https://github.com/Gdewilde/devpulse/releases), open it, and drag DevPulse to Applications.
+
+Or build from source:
 ```bash
-# Build and install
-git clone https://github.com/user/devpulse.git
+git clone https://github.com/Gdewilde/devpulse.git
 cd devpulse
 bash build.sh
-```
-
-Or with Homebrew (coming soon):
-```bash
-brew tap user/devpulse
-brew install --cask devpulse
 ```
 
 ## Requirements
@@ -70,9 +90,11 @@ brew install --cask devpulse
 
 DevPulse is a native Swift app that runs in your menu bar. It uses:
 - Darwin APIs for memory stats (no shell commands for core metrics)
+- Metal + IOKit for GPU/VRAM monitoring
 - `ps` for process discovery and attribution
 - AppleScript for Chrome tab counting and graceful quit
 - `docker stats` for container memory
+- GitHub API for update checks
 - Local JSON storage for 7-day tracking (~30 KB)
 - macOS notifications for alerts
 
@@ -85,19 +107,24 @@ DevPulse is a native Swift app that runs in your menu bar. It uses:
 bash build.sh
 
 # Release build (with Developer ID)
-DEVELOPER_ID="Developer ID Application: ..." bash scripts/release.sh
+DEVELOPER_ID="Developer ID Application: ..." bash release.sh
 ```
 
 Project structure:
 ```
-DevPulse.app/Sources/
-  DevPulseApp.swift    — App entry, status bar, popover, actions
-  PopoverView.swift    — SwiftUI popover UI
-  AppState.swift       — Observable state model
-  MemoryStats.swift    — System memory via Darwin APIs
-  TopProcesses.swift   — Process detection, grouping, Docker, Chrome, zombies
-  RAMAdvisor.swift     — 7-day tracking, verdicts, "Can I Run?" model database
-  AutoOptimizer.swift  — Background optimization agent
+DevPulse/Sources/
+  DevPulseApp.swift        — App entry, status bar, popover, actions, update checker
+  PopoverView.swift        — SwiftUI popover UI
+  AppState.swift           — Observable state model
+  MemoryStats.swift        — System memory via Darwin APIs, GPU via Metal/IOKit, SSD health
+  TopProcesses.swift       — Process detection, grouping, Docker, Chrome, zombies
+  RAMAdvisor.swift         — 7-day tracking, verdicts, "Can I Run?" model database
+  AutoOptimizer.swift      — Background optimization agent
+  CleanupActions.swift     — Quick Clean and smart cleanup actions
+  SessionProfiles.swift    — Session profile detection, switching, learning
+  Preferences.swift        — App preferences and settings storage
+  ProfileSettingsView.swift — Settings panel UI
+  TimelineStore.swift      — Memory timeline recording and event detection
 ```
 
 ## License

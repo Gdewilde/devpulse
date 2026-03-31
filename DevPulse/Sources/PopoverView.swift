@@ -58,7 +58,7 @@ struct PopoverView: View {
                 }
                 .buttonStyle(.borderless)
 
-                FooterSection(onAction: onAction)
+                FooterSection(state: state, onAction: onAction)
             }
         }
         .frame(width: 340)
@@ -981,6 +981,7 @@ struct ActionRow: View {
 // MARK: - Footer
 
 struct FooterSection: View {
+    @ObservedObject var state: AppState
     var onAction: ((AppAction) -> Void)?
 
     var body: some View {
@@ -989,7 +990,34 @@ struct FooterSection: View {
             Text("DevPulse v\(version)")
                 .font(.system(size: 9))
                 .foregroundStyle(.quaternary)
+            if state.updateAvailable, let latest = state.latestVersion,
+               let url = state.latestReleaseURL {
+                Button {
+                    onAction?(.openURL(url))
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 8))
+                        Text("v\(latest) available")
+                            .font(.system(size: 9, weight: .medium))
+                    }
+                    .foregroundStyle(.blue)
+                }
+                .buttonStyle(.borderless)
+            }
             Spacer()
+            Button {
+                onAction?(.openURL("https://github.com/Gdewilde/devpulse"))
+            } label: {
+                HStack(spacing: 2) {
+                    Image(systemName: "star")
+                        .font(.system(size: 8))
+                    Text("Star on GitHub")
+                        .font(.system(size: 9))
+                }
+                .foregroundStyle(.tertiary)
+            }
+            .buttonStyle(.borderless)
             Button {
                 onAction?(.openURL("https://devpulse.sh"))
             } label: {
