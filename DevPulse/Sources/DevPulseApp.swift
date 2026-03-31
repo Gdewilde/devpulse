@@ -130,9 +130,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let electron = getElectronStats(processes: procs)
             let chrome = getChromeStats()
             let inactive = getInactiveDevServers()
+            let gpu = getGPUMemoryInfo()
             let stats = self.appState.stats
 
             DispatchQueue.main.async {
+                if gpu?.allocatedMB != self.appState.gpuMemory?.allocatedMB {
+                    self.appState.gpuMemory = gpu
+                }
                 self.appState.processes = procs
                 self.appState.zombies = zombies
                 self.notifyNewZombies(zombies)
@@ -163,6 +167,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
                 self.appState.verdict = self.ramAdvisor.getVerdict()
                 self.appState.modelResults = self.ramAdvisor.checkModels()
+
+                // Detect current session profile
+                self.appState.detectedProfile = self.appState.sessionProfileManager.detectCurrentProfile()
+
+                // Learning: record snapshot and detect patterns
+                self.appState.sessionProfileManager.recordSnapshot()
+                if self.appState.sessionProfileManager.learnModeEnabled {
+                    self.appState.learnedPatterns = self.appState.sessionProfileManager.detectPatterns()
+                }
 
                 // Scan cleanups periodically (every 5 min, piggyback on snapshot timing)
                 if Date().timeIntervalSince(self.lastSnapshotTime) < 2 {
@@ -275,17 +288,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         case .fullCheck:
             popover.performClose(nil)
-            let p = Process()
-            p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-            p.arguments = ["-a", "Terminal", "/Users/gj/Apps/devpulse/mem-check.sh"]
-            try? p.run()
+            if let scriptPath = Bundle.main.path(forResource: "mem-check", ofType: "sh") {
+                let p = Process()
+                p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+                p.arguments = ["-a", "Terminal", scriptPath]
+                try? p.run()
+            }
 
         case .autoFix:
             popover.performClose(nil)
-            let p = Process()
-            p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-            p.arguments = ["-a", "Terminal", "/Users/gj/Apps/devpulse/mem-check.sh", "--args", "--fix"]
-            try? p.run()
+            if let scriptPath = Bundle.main.path(forResource: "mem-check", ofType: "sh") {
+                let p = Process()
+                p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+                p.arguments = ["-a", "Terminal", scriptPath, "--args", "--fix"]
+                try? p.run()
+            }
 
         case .restartDockerVM:
             restartDockerVM { [weak self] success, message in
@@ -349,9 +366,109 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 osa.waitUntilExit()
             }
 
+        case .confirmSwitchProfile(let profile):
+            let runningApps = NSWorkspace.shared.runningApplications
+                .filter { $0.activationPolicy == .regular }
+            let runningNames = Set(runningApps.compactMap { $0.localizedName })
+            let profileAppSet = Set(profile.apps)
+            let toClose = runningNames.subtracting(profileAppSet).subtracting(["Finder", "DevPulse"]).sorted()
+            let toLaunch = profileAppSet.subtracting(runningNames).sorted()
+            appState.pendingSwitchProfile = profile
+            appState.appsToClose = toClose
+            appState.appsToLaunch = toLaunch
+
+        case .executeSwitchProfile(let profile):
+            appState.pendingSwitchProfile = nil
+            appState.isSwitchingProfile = true
+            appState.profileSwitchResult = nil
+            popover.performClose(nil)
+            appState.sessionProfileManager.switchTo(profile) { [weak self] msg in
+                self?.appState.profileSwitchResult = msg
+                self?.appState.isSwitchingProfile = false
+                self?.appState.detectedProfile = self?.appState.sessionProfileManager.detectCurrentProfile()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+                    self?.appState.profileSwitchResult = nil
+                }
+            }
+
+        case .cancelSwitchProfile:
+            appState.pendingSwitchProfile = nil
+            appState.appsToClose = []
+            appState.appsToLaunch = []
+
+        case .showSettings:
+            popover.performClose(nil)
+            showSettingsPanel()
+
+        case .addProfile(let profile):
+            appState.sessionProfileManager.addProfile(profile)
+            appState.objectWillChange.send()
+
+        case .deleteProfile(let id):
+            appState.sessionProfileManager.deleteProfile(id: id)
+            appState.objectWillChange.send()
+
+        case .updateProfile(let profile):
+            appState.sessionProfileManager.updateProfile(profile)
+            appState.objectWillChange.send()
+
+        case .toggleLearnMode:
+            appState.sessionProfileManager.learnModeEnabled.toggle()
+            appState.objectWillChange.send()
+
+        case .acceptLearnedPattern(let pattern):
+            let profile = SessionProfile(
+                id: pattern.id,
+                name: pattern.suggestedName,
+                apps: pattern.apps,
+                estimatedRAMGB: Double(pattern.apps.count) * 2,
+                icon: pattern.suggestedIcon,
+                isBuiltIn: false
+            )
+            appState.sessionProfileManager.addProfile(profile)
+            appState.learnedPatterns.removeAll { $0.id == pattern.id }
+            appState.objectWillChange.send()
+
+        case .dismissLearnedPattern(let pattern):
+            appState.learnedPatterns.removeAll { $0.id == pattern.id }
+
         case .quitApp:
             NSApplication.shared.terminate(nil)
         }
+    }
+
+    // MARK: - Settings Panel
+
+    private var settingsPanel: NSPanel?
+
+    private func showSettingsPanel() {
+        if let existing = settingsPanel {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 460),
+            styleMask: [.titled, .closable, .resizable, .utilityWindow],
+            backing: .buffered,
+            defer: false
+        )
+        panel.title = "DevPulse Settings"
+        panel.isFloatingPanel = true
+        panel.center()
+
+        let settingsView = SettingsView(
+            state: appState,
+            prefs: Preferences.shared,
+            onAction: { [weak self] action in
+                self?.handleAction(action)
+            }
+        )
+        panel.contentView = NSHostingView(rootView: settingsView)
+        panel.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        settingsPanel = panel
     }
 
     // MARK: - Timeline Panel
@@ -472,6 +589,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         subheading("System Memory")
         mono("\(String(format: "%.0f", stats.usedGB)) / \(String(format: "%.0f", stats.totalGB)) GB used (\(Int(stats.usedPercent))%)")
         mono("Free: \(String(format: "%.1f", stats.freeGB)) GB  Compressed: \(String(format: "%.1f", stats.compressedGB)) GB  Swap: \(String(format: "%.1f", stats.swapUsedGB)) GB")
+
+        if let gpu = appState.gpuMemory {
+            subheading("GPU / Unified Memory (for Local AI)")
+            mono("GPU allocated:       \(gpu.allocatedFormatted)")
+            mono("Recommended max:     \(String(format: "%.1f GB", gpu.recommendedMaxGB))")
+            mono("Available for AI:    \(gpu.availableForAIFormatted)")
+        }
 
         if let verdict = appState.verdict {
             subheading("Verdict: \(verdict.headline)")

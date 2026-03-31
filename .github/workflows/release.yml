@@ -37,7 +37,7 @@ jobs:
           <dict>
               <key>CFBundleName</key><string>DevPulse</string>
               <key>CFBundleDisplayName</key><string>DevPulse</string>
-              <key>CFBundleIdentifier</key><string>com.gj.devpulse</string>
+              <key>CFBundleIdentifier</key><string>com.devpulse.app</string>
               <key>CFBundleVersion</key><string>${VERSION}</string>
               <key>CFBundleShortVersionString</key><string>${VERSION}</string>
               <key>CFBundleExecutable</key><string>DevPulse</string>

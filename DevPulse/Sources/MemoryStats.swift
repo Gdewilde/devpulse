@@ -1,5 +1,7 @@
 import Foundation
 import Darwin
+import Metal
+import IOKit
 
 struct MemoryStats {
     let totalRAM: UInt64
@@ -208,4 +210,77 @@ private func parseStorageSize(_ s: String) -> Int {
         return Int(num)
     }
     return 0
+}
+
+// MARK: - GPU / Unified Memory for AI
+
+struct GPUMemoryInfo {
+    let allocatedMB: Int        // Currently allocated by GPU (system-wide)
+    let recommendedMaxMB: Int   // Metal's recommended working set size
+
+    var allocatedGB: Double { Double(allocatedMB) / 1024 }
+    var recommendedMaxGB: Double { Double(recommendedMaxMB) / 1024 }
+
+    var allocatedFormatted: String {
+        allocatedMB >= 1024
+            ? String(format: "%.1f GB", allocatedGB)
+            : "\(allocatedMB) MB"
+    }
+
+    var availableForAIMB: Int {
+        max(recommendedMaxMB - allocatedMB, 0)
+    }
+
+    var availableForAIFormatted: String {
+        let mb = availableForAIMB
+        return mb >= 1024
+            ? String(format: "%.1f GB", Double(mb) / 1024)
+            : "\(mb) MB"
+    }
+}
+
+/// Cached Metal device — expensive to create, safe to reuse.
+private let cachedMetalDevice: MTLDevice? = MTLCreateSystemDefaultDevice()
+
+/// Query system-wide GPU memory usage via IOKit + Metal on Apple Silicon.
+func getGPUMemoryInfo() -> GPUMemoryInfo? {
+    guard let device = cachedMetalDevice else { return nil }
+
+    let recommendedMax = Int(device.recommendedMaxWorkingSetSize / 1_048_576)
+    let allocated = getSystemGPUMemoryMB() ?? Int(device.currentAllocatedSize / 1_048_576)
+
+    return GPUMemoryInfo(
+        allocatedMB: allocated,
+        recommendedMaxMB: recommendedMax
+    )
+}
+
+/// Read system-wide GPU "In use system memory" from IOAccelerator.
+private func getSystemGPUMemoryMB() -> Int? {
+    var iterator: io_iterator_t = 0
+    let matching = IOServiceMatching("IOAccelerator")
+    guard IOServiceGetMatchingServices(kIOMainPortDefault, matching, &iterator) == KERN_SUCCESS else {
+        return nil
+    }
+    defer { IOObjectRelease(iterator) }
+
+    var service = IOIteratorNext(iterator)
+    while service != 0 {
+        defer { IOObjectRelease(service) }
+
+        var properties: Unmanaged<CFMutableDictionary>?
+        guard IORegistryEntryCreateCFProperties(service, &properties, kCFAllocatorDefault, 0) == KERN_SUCCESS,
+              let dict = properties?.takeRetainedValue() as? [String: Any] else {
+            service = IOIteratorNext(iterator)
+            continue
+        }
+
+        if let perfStats = dict["PerformanceStatistics"] as? [String: Any],
+           let inUse = perfStats["In use system memory"] as? Int64 {
+            return Int(inUse / 1_048_576)
+        }
+
+        service = IOIteratorNext(iterator)
+    }
+    return nil
 }

@@ -131,6 +131,23 @@ struct AIModel {
     let family: String          // e.g. "Llama 3", "Mistral"
     let quantizations: [AIQuantization]
     let tasks: [String]         // e.g. ["chat", "code", "reasoning"]
+    let ollamaSlug: String?     // e.g. "llama3.1:8b"
+    let websiteSlug: String?    // e.g. "llama3.1-8b"
+
+    var ollamaURL: String? {
+        guard let slug = ollamaSlug else { return nil }
+        return "https://ollama.com/library/\(slug.split(separator: ":").first ?? Substring(slug))"
+    }
+
+    var ollamaPullCommand: String? {
+        guard let slug = ollamaSlug else { return nil }
+        return "ollama pull \(slug)"
+    }
+
+    var websiteURL: String? {
+        guard let slug = websiteSlug else { return nil }
+        return "https://devpulse.sh/can-i-run/\(slug)"
+    }
 }
 
 struct AIQuantization {
@@ -160,95 +177,95 @@ let aiModelDatabase: [AIModel] = [
     AIModel(name: "Llama 3.2 3B", parameters: "3B", family: "Llama", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 2600, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 4200, quality: "high"),
-    ], tasks: ["chat", "code"]),
+    ], tasks: ["chat", "code"], ollamaSlug: "llama3.2:3b", websiteSlug: "llama3.2-3b"),
     AIModel(name: "Llama 3.1 8B", parameters: "8B", family: "Llama", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 5500, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 9500, quality: "high"),
-    ], tasks: ["chat", "code"]),
+    ], tasks: ["chat", "code"], ollamaSlug: "llama3.1:8b", websiteSlug: "llama3.1-8b"),
     AIModel(name: "Llama 3.3 70B", parameters: "70B", family: "Llama", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 42000, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 75000, quality: "high"),
-    ], tasks: ["chat", "code", "reasoning"]),
+    ], tasks: ["chat", "code", "reasoning"], ollamaSlug: "llama3.3:70b", websiteSlug: "llama3.3-70b"),
     AIModel(name: "Llama 4 Scout", parameters: "109B", family: "Llama", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 65000, quality: "medium"),
-    ], tasks: ["chat", "code", "reasoning"]),
+    ], tasks: ["chat", "code", "reasoning"], ollamaSlug: "llama4:scout", websiteSlug: "llama4-scout-17b"),
 
     // Qwen family
     AIModel(name: "Qwen 2.5 7B", parameters: "7B", family: "Qwen", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 5200, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 9000, quality: "high"),
-    ], tasks: ["chat", "code"]),
+    ], tasks: ["chat", "code"], ollamaSlug: "qwen2.5:7b", websiteSlug: nil),
     AIModel(name: "Qwen 2.5 14B", parameters: "14B", family: "Qwen", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 9500, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 16000, quality: "high"),
-    ], tasks: ["chat", "code"]),
+    ], tasks: ["chat", "code"], ollamaSlug: "qwen2.5:14b", websiteSlug: nil),
     AIModel(name: "Qwen 2.5 32B", parameters: "32B", family: "Qwen", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 20000, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 36000, quality: "high"),
-    ], tasks: ["chat", "code", "reasoning"]),
+    ], tasks: ["chat", "code", "reasoning"], ollamaSlug: "qwen2.5:32b", websiteSlug: "qwen2.5-coder-32b"),
     AIModel(name: "Qwen 2.5 72B", parameters: "72B", family: "Qwen", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 44000, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 78000, quality: "high"),
-    ], tasks: ["chat", "code", "reasoning"]),
+    ], tasks: ["chat", "code", "reasoning"], ollamaSlug: "qwen2.5:72b", websiteSlug: nil),
     AIModel(name: "QwQ 32B", parameters: "32B", family: "Qwen", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 20000, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 36000, quality: "high"),
-    ], tasks: ["reasoning"]),
+    ], tasks: ["reasoning"], ollamaSlug: "qwq:32b", websiteSlug: nil),
 
     // Mistral family
     AIModel(name: "Mistral 7B", parameters: "7B", family: "Mistral", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 5200, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 9000, quality: "high"),
-    ], tasks: ["chat", "code"]),
+    ], tasks: ["chat", "code"], ollamaSlug: "mistral:7b", websiteSlug: nil),
     AIModel(name: "Mistral Small 24B", parameters: "24B", family: "Mistral", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 15000, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 27000, quality: "high"),
-    ], tasks: ["chat", "code"]),
+    ], tasks: ["chat", "code"], ollamaSlug: "mistral-small:24b", websiteSlug: "mistral-small-3.1-24b"),
 
     // DeepSeek family
     AIModel(name: "DeepSeek R1 7B", parameters: "7B", family: "DeepSeek", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 5500, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 9500, quality: "high"),
-    ], tasks: ["reasoning", "code"]),
+    ], tasks: ["reasoning", "code"], ollamaSlug: "deepseek-r1:7b", websiteSlug: nil),
     AIModel(name: "DeepSeek R1 32B", parameters: "32B", family: "DeepSeek", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 20000, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 36000, quality: "high"),
-    ], tasks: ["reasoning", "code"]),
+    ], tasks: ["reasoning", "code"], ollamaSlug: "deepseek-r1:32b", websiteSlug: "deepseek-r1-distill-32b"),
     AIModel(name: "DeepSeek R1 70B", parameters: "70B", family: "DeepSeek", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 42000, quality: "medium"),
-    ], tasks: ["reasoning", "code"]),
+    ], tasks: ["reasoning", "code"], ollamaSlug: "deepseek-r1:70b", websiteSlug: "deepseek-r1"),
 
     // Gemma family
     AIModel(name: "Gemma 2 9B", parameters: "9B", family: "Gemma", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 6500, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 11000, quality: "high"),
-    ], tasks: ["chat", "code"]),
+    ], tasks: ["chat", "code"], ollamaSlug: "gemma2:9b", websiteSlug: nil),
     AIModel(name: "Gemma 2 27B", parameters: "27B", family: "Gemma", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 17000, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 30000, quality: "high"),
-    ], tasks: ["chat", "code"]),
+    ], tasks: ["chat", "code"], ollamaSlug: "gemma2:27b", websiteSlug: "gemma3-27b"),
 
     // Phi family
     AIModel(name: "Phi-4 14B", parameters: "14B", family: "Phi", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 9500, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 16000, quality: "high"),
-    ], tasks: ["chat", "code", "reasoning"]),
+    ], tasks: ["chat", "code", "reasoning"], ollamaSlug: "phi4:14b", websiteSlug: "phi4-14b"),
 
     // Code-specific
     AIModel(name: "CodeLlama 34B", parameters: "34B", family: "Llama", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 21000, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 38000, quality: "high"),
-    ], tasks: ["code"]),
+    ], tasks: ["code"], ollamaSlug: "codellama:34b", websiteSlug: nil),
     AIModel(name: "Codestral 22B", parameters: "22B", family: "Mistral", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 14000, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 25000, quality: "high"),
-    ], tasks: ["code"]),
+    ], tasks: ["code"], ollamaSlug: "codestral:22b", websiteSlug: nil),
 
     // Starcoder
     AIModel(name: "StarCoder2 15B", parameters: "15B", family: "StarCoder", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 10000, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 17000, quality: "high"),
-    ], tasks: ["code"]),
+    ], tasks: ["code"], ollamaSlug: "starcoder2:15b", websiteSlug: nil),
 ]
 
 // MARK: - RAM Advisor Class

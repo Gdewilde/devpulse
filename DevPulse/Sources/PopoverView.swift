@@ -36,6 +36,11 @@ struct PopoverView: View {
                 Divider().padding(.horizontal, 16)
                 ActionSection(state: state, onAction: onAction)
 
+                if state.detectedProfile != nil || !state.sessionProfileManager.profiles.isEmpty {
+                    Divider().padding(.horizontal, 16)
+                    SessionProfileSection(state: state, onAction: onAction)
+                }
+
                 // Quit button
                 Button { onAction(.quitApp) } label: {
                     HStack {
@@ -104,14 +109,19 @@ struct HeaderSection: View {
                 StatChip(label: "Free", value: fmt(state.stats.freeGB))
                 StatChip(label: "Compressed", value: fmt(state.stats.compressedGB))
                 StatChip(label: "Swap", value: swapText, accent: swapColor)
-            }
-
-            // SSD health (if available)
-            if let ssd = state.ssdHealth, ssd.available {
-                HStack(spacing: 12) {
-                    StatChip(label: "SSD Written", value: ssd.dataWrittenFormatted)
+                if let gpu = state.gpuMemory {
+                    StatChip(label: "GPU (VRAM)", value: gpu.allocatedFormatted)
                 }
             }
+            HStack(spacing: 12) {
+                if let ssd = state.ssdHealth, ssd.available {
+                    StatChip(label: "SSD Written", value: ssd.dataWrittenFormatted)
+                }
+                if let gpu = state.gpuMemory {
+                    StatChip(label: "GPU Avail for AI", value: gpu.availableForAIFormatted)
+                }
+            }
+            .padding(.top, 4)
         }
         .padding(.horizontal, 16)
         .padding(.top, 14)
@@ -680,7 +690,7 @@ struct CanIRunSection: View {
                 // Compact: show top 3 runnable
                 let runnable = state.modelResults.filter { $0.feasibility == .runsGreat || $0.feasibility == .runsOk }
                 ForEach(runnable.prefix(3), id: \.model.name) { result in
-                    ModelRow(result: result)
+                    ModelRow(result: result, onAction: onAction)
                 }
             } else {
                 // Expanded: all models grouped by feasibility
@@ -701,7 +711,7 @@ struct CanIRunSection: View {
                         .padding(.bottom, 2)
 
                     ForEach(tier.1, id: \.model.name) { result in
-                        ModelRow(result: result)
+                        ModelRow(result: result, onAction: onAction)
                     }
                 }
 
@@ -723,28 +733,102 @@ struct CanIRunSection: View {
 
 struct ModelRow: View {
     let result: ModelCheckResult
+    var onAction: ((AppAction) -> Void)? = nil
+    @State private var isHovered = false
+    @State private var showLinks = false
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: iconName)
-                .font(.system(size: 9))
-                .foregroundStyle(iconColor)
-                .frame(width: 14)
-            Text(result.model.name)
-                .font(.system(size: 11))
-                .foregroundStyle(textColor)
-                .lineLimit(1)
-            Spacer()
-            Text(result.bestQuant.level)
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundStyle(.tertiary)
-            Text("\(result.bestQuant.ramRequiredMB / 1024)G")
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .foregroundStyle(.quaternary)
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                if onAction != nil { showLinks.toggle() }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: iconName)
+                        .font(.system(size: 9))
+                        .foregroundStyle(iconColor)
+                        .frame(width: 14)
+                    Text(result.model.name)
+                        .font(.system(size: 11))
+                        .foregroundStyle(textColor)
+                        .lineLimit(1)
+                    if isHovered && onAction != nil {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 7, weight: .bold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    Spacer()
+                    Text(result.bestQuant.level)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(.tertiary)
+                    Text("\(result.bestQuant.ramRequiredMB / 1024)G")
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.quaternary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 2)
+                .background(isHovered ? Color.primary.opacity(0.04) : .clear)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .onHover { isHovered = $0 }
+            .help("\(result.model.name) (\(result.bestQuant.level)) — needs \(result.bestQuant.ramRequiredMB / 1024) GB. Tasks: \(result.model.tasks.joined(separator: ", "))")
+
+            if showLinks, let onAction = onAction {
+                HStack(spacing: 10) {
+                    if let ollamaURL = result.model.ollamaURL {
+                        Button {
+                            onAction(.openURL(ollamaURL))
+                        } label: {
+                            HStack(spacing: 3) {
+                                Image(systemName: "arrow.down.circle")
+                                    .font(.system(size: 9))
+                                Text("Ollama")
+                                    .font(.system(size: 10, weight: .medium))
+                            }
+                            .foregroundStyle(.blue)
+                        }
+                        .buttonStyle(.borderless)
+                    }
+
+                    if let pullCmd = result.model.ollamaPullCommand {
+                        Button {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(pullCmd, forType: .string)
+                        } label: {
+                            HStack(spacing: 3) {
+                                Image(systemName: "doc.on.clipboard")
+                                    .font(.system(size: 9))
+                                Text(pullCmd)
+                                    .font(.system(size: 10, design: .monospaced))
+                            }
+                            .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Copy to clipboard")
+                    }
+
+                    if let webURL = result.model.websiteURL {
+                        Button {
+                            onAction(.openURL(webURL))
+                        } label: {
+                            HStack(spacing: 3) {
+                                Image(systemName: "globe")
+                                    .font(.system(size: 9))
+                                Text("Details")
+                                    .font(.system(size: 10, weight: .medium))
+                            }
+                            .foregroundStyle(.blue)
+                        }
+                        .buttonStyle(.borderless)
+                    }
+
+                    Spacer()
+                }
+                .padding(.horizontal, 38)
+                .padding(.vertical, 4)
+                .background(Color.primary.opacity(0.02))
+            }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 2)
-        .help("\(result.model.name) (\(result.bestQuant.level)) — needs \(result.bestQuant.ramRequiredMB / 1024) GB. Tasks: \(result.model.tasks.joined(separator: ", "))")
     }
 
     private var iconName: String {
@@ -1010,6 +1094,273 @@ struct SectionLabel: View {
     }
 }
 
+// MARK: - Session Profiles
+
+struct SessionProfileSection: View {
+    @ObservedObject var state: AppState
+    var onAction: (AppAction) -> Void
+    @State private var expanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
+            } label: {
+                HStack(spacing: 8) {
+                    if let detected = state.detectedProfile {
+                        Image(systemName: detected.profile.icon)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.blue)
+                            .frame(width: 14)
+                        Text("Session:")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                        Text(detected.profile.name)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.primary)
+                        Text("\(Int(detected.matchScore * 100))%")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.tertiary)
+                    } else {
+                        Image(systemName: "person.2")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 14)
+                        Text("Session Profiles")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.primary)
+                    }
+                    if state.sessionProfileManager.learnModeEnabled {
+                        Image(systemName: "brain")
+                            .font(.system(size: 8))
+                            .foregroundStyle(.purple)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(expanded ? 90 : 0))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+
+            if let result = state.profileSwitchResult {
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark.circle")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.green)
+                    Text(result)
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(.green)
+                    Spacer()
+                }
+                .padding(.horizontal, 44)
+                .padding(.bottom, 4)
+            }
+
+            if expanded {
+                HStack {
+                    Spacer()
+                    Button { onAction(.showSettings) } label: {
+                        HStack(spacing: 3) {
+                            Image(systemName: "gearshape")
+                                .font(.system(size: 9))
+                            Text("Settings")
+                                .font(.system(size: 9))
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 4)
+
+                if let top = state.learnedPatterns.first {
+                    LearnedPatternRow(pattern: top, totalCount: state.learnedPatterns.count, onAction: onAction)
+                }
+
+                if let pending = state.pendingSwitchProfile {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Switch to \(pending.name)?")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.primary)
+
+                        if !state.appsToClose.isEmpty {
+                            HStack(alignment: .top, spacing: 4) {
+                                Image(systemName: "xmark.circle")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.red)
+                                Text("Will close: \(state.appsToClose.joined(separator: ", "))")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        if !state.appsToLaunch.isEmpty {
+                            HStack(alignment: .top, spacing: 4) {
+                                Image(systemName: "plus.circle")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.green)
+                                Text("Will launch: \(state.appsToLaunch.joined(separator: ", "))")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        if state.appsToClose.isEmpty && state.appsToLaunch.isEmpty {
+                            Text("No changes needed — already matching.")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.tertiary)
+                        }
+
+                        HStack(spacing: 8) {
+                            Button {
+                                onAction(.executeSwitchProfile(pending))
+                            } label: {
+                                Text("Switch")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 4)
+                                    .background(.blue)
+                                    .foregroundStyle(.white)
+                                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                            }
+                            .buttonStyle(.borderless)
+                            .disabled(state.appsToClose.isEmpty && state.appsToLaunch.isEmpty)
+
+                            Button {
+                                onAction(.cancelSwitchProfile)
+                            } label: {
+                                Text("Cancel")
+                                    .font(.system(size: 11))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 4)
+                                    .background(.quaternary)
+                                    .foregroundStyle(.primary)
+                                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                        .padding(.top, 2)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.primary.opacity(0.04))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+                }
+
+                if state.pendingSwitchProfile == nil {
+                    ForEach(state.sessionProfileManager.profiles) { profile in
+                        let isCurrent = state.detectedProfile?.profile.id == profile.id
+                            && (state.detectedProfile?.matchScore ?? 0) >= 0.9
+                        ProfileRow(
+                            profile: profile,
+                            estimatedMB: state.sessionProfileManager.estimateMemory(profile),
+                            isCurrent: isCurrent,
+                            isSwitching: state.isSwitchingProfile,
+                            onSwitch: { onAction(.confirmSwitchProfile(profile)) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct LearnedPatternRow: View {
+    let pattern: LearnedPattern
+    let totalCount: Int
+    var onAction: (AppAction) -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "brain")
+                .font(.system(size: 10))
+                .foregroundStyle(.purple)
+                .frame(width: 14)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("\(pattern.suggestedName) — \(pattern.apps.joined(separator: ", "))")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer()
+            Button {
+                onAction(.acceptLearnedPattern(pattern))
+            } label: {
+                Text("Add")
+                    .font(.system(size: 9, weight: .medium))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(.purple.opacity(0.15))
+                    .foregroundStyle(.purple)
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+            }
+            .buttonStyle(.borderless)
+            Button {
+                onAction(.dismissLearnedPattern(pattern))
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(.tertiary)
+            }
+            .buttonStyle(.borderless)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 4)
+    }
+}
+
+struct ProfileRow: View {
+    let profile: SessionProfile
+    let estimatedMB: Int
+    let isCurrent: Bool
+    let isSwitching: Bool
+    let onSwitch: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: onSwitch) {
+            HStack(spacing: 8) {
+                Image(systemName: profile.icon)
+                    .font(.system(size: 11))
+                    .foregroundStyle(isCurrent ? .blue : .secondary)
+                    .frame(width: 16)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(profile.name)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.primary)
+                    Text("\(profile.apps.joined(separator: ", ")) · ~\(fmtMB(estimatedMB))")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                if isCurrent {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.blue)
+                } else if isSwitching {
+                    ProgressView()
+                        .controlSize(.mini)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 5)
+            .background(isHovered ? Color.primary.opacity(0.06) : Color.clear)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
+        .disabled(isCurrent || isSwitching)
+        .onHover { isHovered = $0 }
+    }
+}
+
 // MARK: - Actions Enum
 
 enum AppAction {
@@ -1026,6 +1377,16 @@ enum AppAction {
     case openURL(String)
     case chromeTaskManager
     case chromeMemorySaver
+    case confirmSwitchProfile(SessionProfile)
+    case executeSwitchProfile(SessionProfile)
+    case cancelSwitchProfile
+    case showSettings
+    case addProfile(SessionProfile)
+    case deleteProfile(String)
+    case updateProfile(SessionProfile)
+    case toggleLearnMode
+    case acceptLearnedPattern(LearnedPattern)
+    case dismissLearnedPattern(LearnedPattern)
     case quitApp
 }
 

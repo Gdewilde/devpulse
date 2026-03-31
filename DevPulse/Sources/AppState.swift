@@ -40,10 +40,21 @@ struct OptimizerImpact {
     }
 }
 
+    @Published var gpuMemory: GPUMemoryInfo? = nil
     @Published var ssdHealth: SSDHealth? = nil
     @Published var cleanupScan: CleanupScanResult? = nil
     @Published var lastCleanupResult: QuickCleanResult? = nil
     @Published var isCleaningUp: Bool = false
+
+    // Session Profiles
+    let sessionProfileManager = SessionProfileManager()
+    @Published var detectedProfile: DetectedProfile? = nil
+    @Published var isSwitchingProfile: Bool = false
+    @Published var profileSwitchResult: String? = nil
+    @Published var pendingSwitchProfile: SessionProfile? = nil
+    @Published var appsToClose: [String] = []
+    @Published var appsToLaunch: [String] = []
+    @Published var learnedPatterns: [LearnedPattern] = []
 
     private var previousSwapGB: Double? = nil
 
