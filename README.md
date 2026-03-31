@@ -102,4 +102,4 @@ DevPulse.app/Sources/
 
 ## License
 
-MIT
+[Business Source License 1.1](https://mariadb.com/bsl11/) (BUSL-1.1). After the change date, the work is available under [MPL 2.0](https://www.mozilla.org/MPL/2.0/). See `LICENSE` for the full terms and parameters.
