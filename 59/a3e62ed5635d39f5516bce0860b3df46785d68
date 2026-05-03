@@ -1,0 +1,23 @@
+.gitignore
+  8d0799e3d0602969 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "59a3e62ed5635d39f5516bce0860b3df46785d68",
+  "prompts": {
+    "8d0799e3d0602969": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41113d78-900a-4224-8e3b-b09b6dc874f5",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "GJ",
+      "messages": [],
+      "total_additions": 3072,
+      "total_deletions": 0,
+      "accepted_lines": 3252,
+      "overriden_lines": 0
+    }
+  }
+}
