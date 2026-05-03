@@ -356,6 +356,152 @@ func runQuickClean(killZombies: Bool = true) -> QuickCleanResult {
     )
 }
 
+// MARK: - Dev Artifact Scanner (Extended)
+// Scans node_modules, Homebrew, Cargo, Gradle, pip, CocoaPods, Ollama models,
+// HuggingFace cache — all the hidden disk hogs.
+
+struct DevArtifact: Identifiable {
+    let id: String          // path
+    let category: String    // "node_modules", "Homebrew", etc.
+    let path: String
+    let sizeMB: Int
+    let project: String?    // Attributed project name, if applicable
+    let daysSinceAccess: Int
+    let isStale: Bool       // Not accessed in 30+ days
+
+    var sizeFormatted: String {
+        sizeMB >= 1024
+            ? String(format: "%.1f GB", Double(sizeMB) / 1024)
+            : "\(sizeMB) MB"
+    }
+}
+
+struct DevArtifactScan {
+    let artifacts: [DevArtifact]
+    let totalMB: Int
+    let staleMB: Int
+    let byCategory: [(category: String, totalMB: Int, count: Int)]
+
+    var totalFormatted: String {
+        totalMB >= 1024
+            ? String(format: "%.1f GB", Double(totalMB) / 1024)
+            : "\(totalMB) MB"
+    }
+
+    var staleFormatted: String {
+        staleMB >= 1024
+            ? String(format: "%.1f GB", Double(staleMB) / 1024)
+            : "\(staleMB) MB"
+    }
+}
+
+func scanDevArtifacts() -> DevArtifactScan {
+    let fm = FileManager.default
+    let home = fm.homeDirectoryForCurrentUser.path
+    var artifacts: [DevArtifact] = []
+
+    // 1. node_modules in ~/Apps
+    let appsDir = "\(home)/Apps"
+    if let projects = try? fm.contentsOfDirectory(atPath: appsDir) {
+        for project in projects {
+            let nmPath = "\(appsDir)/\(project)/node_modules"
+            if let art = scanDirectory(nmPath, category: "node_modules", project: project) {
+                artifacts.append(art)
+            }
+        }
+    }
+
+    // 2. Global caches
+    let cacheTargets: [(path: String, category: String)] = [
+        ("\(home)/.cache/Homebrew", "Homebrew Cache"),
+        ("\(home)/Library/Caches/Homebrew", "Homebrew Cache"),
+        ("\(home)/.cargo/registry", "Cargo Registry"),
+        ("\(home)/.gradle/caches", "Gradle Cache"),
+        ("\(home)/.cache/pip", "pip Cache"),
+        ("\(home)/Library/Caches/pip", "pip Cache"),
+        ("\(home)/Library/Caches/CocoaPods", "CocoaPods Cache"),
+        ("\(home)/.cache/huggingface", "HuggingFace Cache"),
+        ("\(home)/.ollama/models", "Ollama Models"),
+        ("\(home)/.npm/_cacache", "npm Cache"),
+        ("\(home)/.cache/yarn", "Yarn Cache"),
+        ("\(home)/Library/Caches/pnpm", "pnpm Cache"),
+        ("\(home)/.bun/install/cache", "Bun Cache"),
+    ]
+
+    for target in cacheTargets {
+        if let art = scanDirectory(target.path, category: target.category, project: nil) {
+            artifacts.append(art)
+        }
+    }
+
+    artifacts.sort { $0.sizeMB > $1.sizeMB }
+
+    let totalMB = artifacts.reduce(0) { $0 + $1.sizeMB }
+    let staleMB = artifacts.filter(\.isStale).reduce(0) { $0 + $1.sizeMB }
+
+    // Group by category
+    let grouped = Dictionary(grouping: artifacts) { $0.category }
+    let byCategory = grouped.map { (category: $0.key, totalMB: $0.value.reduce(0) { $0 + $1.sizeMB }, count: $0.value.count) }
+        .sorted { $0.totalMB > $1.totalMB }
+
+    return DevArtifactScan(
+        artifacts: artifacts,
+        totalMB: totalMB,
+        staleMB: staleMB,
+        byCategory: byCategory
+    )
+}
+
+func cleanDevArtifacts(_ artifacts: [DevArtifact]) -> CleanupResult {
+    let fm = FileManager.default
+    var freedMB = 0
+    var cleaned = 0
+
+    for artifact in artifacts {
+        do {
+            try fm.removeItem(atPath: artifact.path)
+            freedMB += artifact.sizeMB
+            cleaned += 1
+        } catch {
+            // Skip individual failures
+        }
+    }
+
+    return CleanupResult(
+        action: "Dev Artifacts",
+        freedMB: freedMB,
+        detail: "Removed \(cleaned) artifact\(cleaned == 1 ? "" : "s")",
+        success: cleaned > 0
+    )
+}
+
+private func scanDirectory(_ path: String, category: String, project: String?) -> DevArtifact? {
+    let fm = FileManager.default
+    var isDir: ObjCBool = false
+    guard fm.fileExists(atPath: path, isDirectory: &isDir), isDir.boolValue else { return nil }
+
+    let sizeMB = duSizeKB(path) / 1024
+    guard sizeMB >= 10 else { return nil }  // Skip tiny dirs
+
+    let days: Int
+    if let attrs = try? fm.attributesOfItem(atPath: path),
+       let modDate = attrs[.modificationDate] as? Date {
+        days = Int(Date().timeIntervalSince(modDate) / 86400)
+    } else {
+        days = 0
+    }
+
+    return DevArtifact(
+        id: path,
+        category: category,
+        path: path,
+        sizeMB: sizeMB,
+        project: project,
+        daysSinceAccess: days,
+        isStale: days >= 30
+    )
+}
+
 // MARK: - Full Scan
 
 func scanAllCleanups() -> CleanupScanResult {
