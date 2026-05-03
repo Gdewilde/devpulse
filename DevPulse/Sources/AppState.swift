@@ -47,6 +47,7 @@ struct OptimizerImpact {
     @Published var devArtifactScan: DevArtifactScan? = nil
     @Published var appRecommendations: [AppRecommendation] = []
     @Published var ssdHealth: SSDHealth? = nil
+    @Published var battery: BatteryStats? = nil
     @Published var cleanupScan: CleanupScanResult? = nil
     @Published var lastCleanupResult: QuickCleanResult? = nil
     @Published var isCleaningUp: Bool = false

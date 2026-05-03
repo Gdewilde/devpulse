@@ -66,10 +66,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         updateStatusBar()
+        appState.battery = getBatteryStats()
         refreshData()
 
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
             self?.appState.stats = MemoryStats.current()
+            self?.appState.battery = getBatteryStats()
             self?.appState.updateSwapTrend()
             self?.swapTracker.record(swapGB: self?.appState.stats.swapUsedGB ?? 0)
             self?.updateStatusBar()

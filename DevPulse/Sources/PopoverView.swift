@@ -140,6 +140,9 @@ struct HeaderSection: View {
                 if let gpu = state.gpuMemory {
                     StatChip(label: "GPU Avail for AI", value: gpu.availableForAIFormatted)
                 }
+                if let b = state.battery {
+                    StatChip(label: batteryLabel(b), value: batteryValue(b), accent: batteryColor(b))
+                }
             }
             .padding(.top, 4)
         }
@@ -165,6 +168,26 @@ struct HeaderSection: View {
 
     private var swapColor: Color? {
         state.stats.swapUsedGB >= 30 ? .red : state.stats.swapUsedGB >= 10 ? .orange : nil
+    }
+
+    private func batteryLabel(_ b: BatteryStats) -> String {
+        if b.lowPowerMode { return "Battery (LPM)" }
+        if b.onAC { return b.isCharging ? "Battery ⚡︎" : "Battery (AC)" }
+        return "Battery"
+    }
+
+    private func batteryValue(_ b: BatteryStats) -> String {
+        if let m = b.timeToEmptyMinutes, m > 0, !b.onAC {
+            return "\(b.percent)% · \(m / 60)h \(m % 60)m"
+        }
+        return "\(b.percent)%"
+    }
+
+    private func batteryColor(_ b: BatteryStats) -> Color? {
+        if b.onAC { return nil }
+        if b.percent <= 10 { return .red }
+        if b.percent <= 20 { return .orange }
+        return nil
     }
 }
 
