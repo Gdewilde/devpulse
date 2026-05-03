@@ -438,6 +438,23 @@ class RAMAdvisor {
         guard daysSince >= 7 else { return }
         guard let verdict = getVerdict(), verdict.daysTracked >= 3 else { return }
 
+        sendWeeklySummary(verdict: verdict)
+
+        state.lastNotificationDate = Date()
+        saveWeeklyState(state)
+    }
+
+    /// Force-fire the weekly summary notification, bypassing time and data guards.
+    func debugTriggerWeeklySummary() {
+        let verdict = getVerdict() ?? RAMVerdict(
+            peakUsedGB: 0, peakSwapGB: 0, totalRAMGB: Double(ProcessInfo.processInfo.physicalMemory) / (1024 * 1024 * 1024),
+            wasteGB: 0, optimizedPeakGB: 0, snapshotCount: 0, daysTracked: 0,
+            waste: WasteBreakdown(zombieMB: 0, dockerMB: 0, electronMB: 0, inactiveServerMB: 0)
+        )
+        sendWeeklySummary(verdict: verdict)
+    }
+
+    private func sendWeeklySummary(verdict: RAMVerdict) {
         let peakStr = String(format: "%.0f GB", verdict.peakUsedGB)
         let wasteStr = String(format: "%.0f GB", verdict.wasteGB)
 
@@ -452,9 +469,6 @@ class RAMAdvisor {
             trigger: nil
         )
         UNUserNotificationCenter.current().add(request)
-
-        state.lastNotificationDate = Date()
-        saveWeeklyState(state)
     }
 
     private func loadWeeklyState() -> WeeklyState {

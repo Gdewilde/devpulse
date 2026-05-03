@@ -7,6 +7,13 @@ import UserNotifications
 @main
 struct DevPulseEntry {
     static func main() {
+        // Dual-mode binary: when invoked with a recognized subcommand,
+        // dispatch to the CLI and exit before NSApp setup.
+        let args = CommandLine.arguments
+        if CLI.shouldRun(args: args) {
+            exit(CLI.run(args: args))
+        }
+
         let app = NSApplication.shared
         let delegate = AppDelegate()
         app.delegate = delegate
@@ -29,7 +36,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let autoOptimizer = AutoOptimizer()
     private let timelineStore = TimelineStore()
     private let swapTracker = SwapTracker()
+    private let ollamaMonitor = OllamaMonitor()
     private var previousZombiePids: Set<Int32> = []
+    private var lastStatus: HealthStatus?
+    private var lastHeavyCalcTime: Date = .distantPast
+    private var lastDiskScanTime: Date = .distantPast
+    private let diskScanInterval = PerformanceTuning.diskScanInterval
+    private var lastProfileLearningTime: Date = .distantPast
+    private let profileLearningInterval = PerformanceTuning.profileLearningInterval
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -54,7 +68,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         updateStatusBar()
         refreshData()
 
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
             self?.appState.stats = MemoryStats.current()
             self?.appState.updateSwapTrend()
             self?.swapTracker.record(swapGB: self?.appState.stats.swapUsedGB ?? 0)
@@ -96,25 +110,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard let button = statusItem.button else { return }
         let stats = appState.stats
 
-        let symbolName = stats.status.icon
-        let tint: NSColor
-        switch stats.status {
-        case .healthy:  tint = .systemGreen
-        case .warning:  tint = .systemOrange
-        case .critical: tint = .systemRed
-        }
+        // Only regenerate icon when health status changes
+        if stats.status != lastStatus {
+            lastStatus = stats.status
 
-        if let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: stats.status.label) {
-            let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .medium)
-            let configured = image.withSymbolConfiguration(config) ?? image
-            configured.isTemplate = false
-            let colored = configured.copy() as! NSImage
-            colored.lockFocus()
-            tint.set()
-            NSRect(origin: .zero, size: colored.size).fill(using: .sourceAtop)
-            colored.unlockFocus()
-            button.image = colored
-            button.imagePosition = .imageLeading
+            let symbolName = stats.status.icon
+            let tint: NSColor
+            switch stats.status {
+            case .healthy:  tint = .systemGreen
+            case .warning:  tint = .systemOrange
+            case .critical: tint = .systemRed
+            }
+
+            if let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: stats.status.label) {
+                let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .medium)
+                let configured = image.withSymbolConfiguration(config) ?? image
+                configured.isTemplate = false
+                let colored = configured.copy() as! NSImage
+                colored.lockFocus()
+                tint.set()
+                NSRect(origin: .zero, size: colored.size).fill(using: .sourceAtop)
+                colored.unlockFocus()
+                button.image = colored
+                button.imagePosition = .imageLeading
+            }
         }
 
         let swapSuffix = appState.swapTrend == .stable ? "" : " \(appState.swapTrend.rawValue)"
@@ -127,19 +146,67 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func refreshData() {
         DispatchQueue.global(qos: .utility).async { [weak self] in
             guard let self = self else { return }
-            let procs = getTopProcesses(limit: 8)
-            let zombies = getZombieProcesses()
-            let docker = getDockerStats()
+
+            // Gather data in parallel
+            let group = DispatchGroup()
+            var procs: [ProcessInfo_Memory] = []
+            var zombies: [ZombieGroup] = []
+            var docker: DockerStats?
+            var chrome: ChromeStats?
+            var inactive: [InactiveServerGroup] = []
+            var gpu: GPUMemoryInfo?
+            var ollama: OllamaStatus?
+
+            group.enter()
+            DispatchQueue.global(qos: .utility).async {
+                procs = getTopProcesses(limit: 8)
+                group.leave()
+            }
+            group.enter()
+            DispatchQueue.global(qos: .utility).async {
+                zombies = getZombieProcesses()
+                group.leave()
+            }
+            group.enter()
+            DispatchQueue.global(qos: .utility).async {
+                docker = getDockerStats()
+                group.leave()
+            }
+            group.enter()
+            DispatchQueue.global(qos: .utility).async {
+                chrome = getChromeStats()
+                group.leave()
+            }
+            group.enter()
+            DispatchQueue.global(qos: .utility).async {
+                inactive = getInactiveDevServers()
+                group.leave()
+            }
+            group.enter()
+            DispatchQueue.global(qos: .utility).async {
+                gpu = getGPUMemoryInfo()
+                group.leave()
+            }
+            group.enter()
+            DispatchQueue.global(qos: .utility).async {
+                ollama = self.ollamaMonitor.getStatus()
+                group.leave()
+            }
+
+            group.wait()
+
+            // electron depends on procs
             let electron = getElectronStats(processes: procs)
-            let chrome = getChromeStats()
-            let inactive = getInactiveDevServers()
-            let gpu = getGPUMemoryInfo()
             let stats = self.appState.stats
 
             DispatchQueue.main.async {
                 if gpu?.allocatedMB != self.appState.gpuMemory?.allocatedMB {
                     self.appState.gpuMemory = gpu
                 }
+                self.appState.ollamaStatus = ollama
+                self.appState.aiMemoryBudget = AIMemoryBudget.calculate(
+                    stats: stats, gpu: gpu, ollama: ollama
+                )
                 self.appState.processes = procs
                 self.appState.zombies = zombies
                 self.notifyNewZombies(zombies)
@@ -168,24 +235,46 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     self.timelineStore.detectEvents(stats: stats, dockerRunning: docker?.isRunning ?? false)
                 }
 
-                self.appState.verdict = self.ramAdvisor.getVerdict()
-                self.appState.modelResults = self.ramAdvisor.checkModels()
-
-                // Detect current session profile
-                self.appState.detectedProfile = self.appState.sessionProfileManager.detectCurrentProfile()
-
-                // Learning: record snapshot and detect patterns
-                self.appState.sessionProfileManager.recordSnapshot()
-                if self.appState.sessionProfileManager.learnModeEnabled {
-                    self.appState.learnedPatterns = self.appState.sessionProfileManager.detectPatterns()
+                // Heavy calculations only every 30s
+                if Date().timeIntervalSince(self.lastHeavyCalcTime) >= 30 {
+                    self.appState.verdict = self.ramAdvisor.getVerdict()
+                    self.appState.modelResults = self.ramAdvisor.checkModels()
+                    self.appState.appRecommendations = getAppRecommendations(processes: procs)
+                    self.lastHeavyCalcTime = Date()
                 }
 
-                // Scan cleanups periodically (every 5 min, piggyback on snapshot timing)
-                if Date().timeIntervalSince(self.lastSnapshotTime) < 2 {
+                // Detect current session profile (cheap — just compares running app names)
+                self.appState.detectedProfile = self.appState.sessionProfileManager.detectCurrentProfile()
+
+                // Learning: recordSnapshot serializes the full history JSON and writes
+                // to disk; detectPatterns is O(n^3) over running apps per snapshot.
+                // Throttle to every 5 min and run off main.
+                if Date().timeIntervalSince(self.lastProfileLearningTime) >= self.profileLearningInterval {
+                    self.lastProfileLearningTime = Date()
+                    let manager = self.appState.sessionProfileManager
+                    DispatchQueue.global(qos: .utility).async { [weak self] in
+                        manager.recordSnapshot()
+                        guard manager.learnModeEnabled else { return }
+                        let patterns = manager.detectPatterns()
+                        DispatchQueue.main.async {
+                            self?.appState.learnedPatterns = patterns
+                        }
+                    }
+                }
+
+                // Disk scans (du -sk on node_modules, Ollama models, caches, DerivedData)
+                // are expensive — run on first refresh and then every 30 min.
+                // Ports are cheaper (lsof) but bundled here so they refresh together.
+                if Date().timeIntervalSince(self.lastDiskScanTime) >= self.diskScanInterval {
+                    self.lastDiskScanTime = Date()
                     DispatchQueue.global(qos: .utility).async { [weak self] in
                         let scan = scanAllCleanups()
+                        let ports = scanListeningPorts()
+                        let artifacts = scanDevArtifacts()
                         DispatchQueue.main.async {
                             self?.appState.cleanupScan = scan
+                            self?.appState.portScan = ports
+                            self?.appState.devArtifactScan = artifacts
                         }
                     }
                 }
@@ -435,6 +524,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case .dismissLearnedPattern(let pattern):
             appState.learnedPatterns.removeAll { $0.id == pattern.id }
 
+        case .ollamaUnloadModel(let name):
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                _ = self?.ollamaMonitor.unloadModel(name)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self?.refreshData() }
+            }
+
+        case .ollamaUnloadAll:
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                _ = self?.ollamaMonitor.unloadAllModels()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self?.refreshData() }
+            }
+
+        case .killPort(let pid):
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                killPortProcess(pid)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { self?.refreshData() }
+            }
+
+        case .cleanArtifacts(let artifacts):
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                _ = cleanDevArtifacts(artifacts)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self?.refreshData() }
+            }
+
+        case .debugWeeklySummary:
+            ramAdvisor.debugTriggerWeeklySummary()
+
         case .quitApp:
             NSApplication.shared.terminate(nil)
         }
@@ -643,7 +759,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if !appState.modelResults.isEmpty {
-            subheading("Can I Run? — Local AI Models")
+            subheading("Can I Run AI Models?")
             for r in appState.modelResults.prefix(15) {
                 let icon: String
                 switch r.feasibility {

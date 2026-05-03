@@ -101,5 +101,15 @@ open "$INSTALL_PATH"
 echo ""
 echo "Installed and launched: v${VERSION} (${BUILD_TIME})"
 
+# Install CLI symlink — same binary, dispatches via argv to CLI mode.
+CLI_TARGET="${INSTALL_PATH}/Contents/MacOS/DevPulse"
+for CLI_DIR in /usr/local/bin "$HOME/.local/bin"; do
+    if [[ -d "$CLI_DIR" && -w "$CLI_DIR" ]]; then
+        ln -sf "$CLI_TARGET" "$CLI_DIR/devpulse"
+        echo "CLI: $CLI_DIR/devpulse -> DevPulse.app  (try: devpulse status)"
+        break
+    fi
+done
+
 # Verify universal binary
 echo "Architecture: $(lipo -info "$APP_BUNDLE/Contents/MacOS/DevPulse" 2>/dev/null | tail -1)"

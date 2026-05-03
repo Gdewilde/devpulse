@@ -12,7 +12,7 @@ struct PopoverView: View {
                 HeaderSection(state: state)
 
                 if state.verdict != nil {
-                    VerdictCard(state: state)
+                    VerdictCard(state: state, onAction: onAction)
                 }
 
                 Divider().padding(.horizontal, 16)
@@ -28,9 +28,29 @@ struct PopoverView: View {
                     ZombieSection(state: state, onAction: onAction)
                 }
 
+                if !state.appRecommendations.isEmpty {
+                    Divider().padding(.horizontal, 16)
+                    AlternativesSection(state: state, onAction: onAction)
+                }
+
+                if state.ollamaStatus?.isRunning == true || state.aiMemoryBudget != nil {
+                    Divider().padding(.horizontal, 16)
+                    AIMemorySection(state: state, onAction: onAction)
+                }
+
                 if !state.modelResults.isEmpty {
                     Divider().padding(.horizontal, 16)
                     CanIRunSection(state: state, onAction: onAction)
+                }
+
+                if let ports = state.portScan, ports.devPortCount > 0 {
+                    Divider().padding(.horizontal, 16)
+                    PortSection(state: state, onAction: onAction)
+                }
+
+                if let artifacts = state.devArtifactScan, artifacts.totalMB >= 100 {
+                    Divider().padding(.horizontal, 16)
+                    DevArtifactSection(state: state, onAction: onAction)
                 }
 
                 Divider().padding(.horizontal, 16)
@@ -515,55 +535,68 @@ struct ZombieSection: View {
 
 struct VerdictCard: View {
     @ObservedObject var state: AppState
+    var onAction: (AppAction) -> Void
+    @State private var isHovered = false
 
     var body: some View {
         if let verdict = state.verdict {
-            VStack(alignment: .leading, spacing: 6) {
-                // The big question
-                HStack(spacing: 8) {
-                    Text(emoji(verdict))
-                        .font(.system(size: 24))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Do I need a new Mac?")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .textCase(.uppercase)
-                            .tracking(0.5)
-                        Text(funHeadline(verdict))
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(headlineColor(verdict))
+            Button {
+                onAction(.openURL("https://devpulse.sh/do-i-need-a-new-mac"))
+            } label: {
+                VStack(alignment: .leading, spacing: 6) {
+                    // The big question
+                    HStack(spacing: 8) {
+                        Text(emoji(verdict))
+                            .font(.system(size: 24))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Do I need a new Mac?")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(.secondary)
+                                .textCase(.uppercase)
+                                .tracking(0.5)
+                            Text(funHeadline(verdict))
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(headlineColor(verdict))
+                        }
+                        Spacer()
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(.tertiary)
+                            .opacity(isHovered ? 1 : 0)
                     }
-                    Spacer()
-                }
 
-                // The roast / explanation
-                Text(funDetail(verdict, state: state))
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    // The roast / explanation
+                    Text(funDetail(verdict, state: state))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                // Waste breakdown pills
-                if verdict.waste.totalMB > 100 {
-                    HStack(spacing: 6) {
-                        if verdict.waste.zombieMB > 50 { WastePill("Zombies", verdict.waste.zombieMB) }
-                        if verdict.waste.dockerMB > 50 { WastePill("Docker", verdict.waste.dockerMB) }
-                        if verdict.waste.electronMB > 50 { WastePill("Electron", verdict.waste.electronMB) }
-                        if verdict.waste.inactiveServerMB > 50 { WastePill("Idle servers", verdict.waste.inactiveServerMB) }
+                    // Waste breakdown pills
+                    if verdict.waste.totalMB > 100 {
+                        HStack(spacing: 6) {
+                            if verdict.waste.zombieMB > 50 { WastePill("Zombies", verdict.waste.zombieMB) }
+                            if verdict.waste.dockerMB > 50 { WastePill("Docker", verdict.waste.dockerMB) }
+                            if verdict.waste.electronMB > 50 { WastePill("Electron", verdict.waste.electronMB) }
+                            if verdict.waste.inactiveServerMB > 50 { WastePill("Idle servers", verdict.waste.inactiveServerMB) }
+                        }
                     }
-                }
 
-                // Stats line
-                HStack(spacing: 8) {
-                    Text("\(Int(verdict.peakUsedGB))G peak")
-                    Text("\(Int(verdict.wasteGB))G reclaimable")
-                    Text("\(verdict.daysTracked)d tracked")
+                    // Stats line
+                    HStack(spacing: 8) {
+                        Text("\(Int(verdict.peakUsedGB))G peak")
+                        Text("\(Int(verdict.wasteGB))G reclaimable")
+                        Text("\(verdict.daysTracked)d tracked")
+                    }
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.quaternary)
                 }
-                .font(.system(size: 9, weight: .medium, design: .monospaced))
-                .foregroundStyle(.quaternary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .buttonStyle(.borderless)
             .background(cardBackground(verdict))
+            .onHover { isHovered = $0 }
         }
     }
 
@@ -660,6 +693,721 @@ struct WastePill: View {
     }
 }
 
+// MARK: - Lighter Alternatives Section
+
+struct AlternativesSection: View {
+    @ObservedObject var state: AppState
+    var onAction: (AppAction) -> Void
+    @State private var expanded = false
+
+    var body: some View {
+        let recs = state.appRecommendations
+        let totalSavings = recs.reduce(0) { $0 + $1.potentialSavingsMB }
+
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
+            } label: {
+                HStack(spacing: 4) {
+                    SectionLabel("Lighter Alternatives")
+                    Spacer()
+                    Text("save \(formatMBAlt(totalSavings))")
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.green)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(expanded ? 90 : 0))
+                    Text("")
+                        .frame(width: 8)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+
+            if !expanded {
+                // Compact: top 3 offenders with best alternative
+                ForEach(recs.prefix(3), id: \.offender.displayName) { rec in
+                    CompactAlternativeRow(rec: rec, onAction: onAction)
+                }
+            } else {
+                // Expanded: all recommendations with full alternative lists
+                ForEach(recs, id: \.offender.displayName) { rec in
+                    ExpandedAlternativeRow(rec: rec, onAction: onAction)
+                }
+            }
+        }
+        .padding(.bottom, 4)
+    }
+
+    private func formatMBAlt(_ mb: Int) -> String {
+        mb >= 1024 ? String(format: "%.1f GB", Double(mb) / 1024) : "\(mb) MB"
+    }
+}
+
+struct CompactAlternativeRow: View {
+    let rec: AppRecommendation
+    var onAction: (AppAction) -> Void
+
+    var body: some View {
+        if let best = rec.alternatives.max(by: { $0.savingsMB < $1.savingsMB }) {
+            HStack(spacing: 8) {
+                Image(systemName: rec.offender.icon)
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 14)
+                Text(rec.offender.displayName)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 7))
+                    .foregroundStyle(.tertiary)
+                Button {
+                    if let url = best.url { onAction(.openURL(url)) }
+                    else if let slug = rec.offender.websiteSlug {
+                        onAction(.openURL("https://devpulse.sh/apps/\(slug)"))
+                    }
+                } label: {
+                    Text(best.name)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.blue)
+                }
+                .buttonStyle(.borderless)
+                Spacer()
+                Text("-\(formatMBRow(best.savingsMB))")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.green)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 3)
+        }
+    }
+
+    private func formatMBRow(_ mb: Int) -> String {
+        mb >= 1024 ? String(format: "%.1f GB", Double(mb) / 1024) : "\(mb) MB"
+    }
+}
+
+struct ExpandedAlternativeRow: View {
+    let rec: AppRecommendation
+    var onAction: (AppAction) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            // Offender header
+            HStack(spacing: 6) {
+                Image(systemName: rec.offender.icon)
+                    .font(.system(size: 9))
+                    .foregroundStyle(.orange)
+                    .frame(width: 14)
+                Text(rec.offender.displayName)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.primary)
+                Text("using \(formatMBExp(rec.currentMB))")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if let slug = rec.offender.websiteSlug {
+                    Button {
+                        onAction(.openURL("https://devpulse.sh/apps/\(slug)"))
+                    } label: {
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 8))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 4)
+
+            // Alternatives
+            ForEach(rec.alternatives.sorted(by: { $0.savingsMB > $1.savingsMB }), id: \.id) { alt in
+                HStack(spacing: 6) {
+                    difficultyDot(alt.difficulty)
+                    Button {
+                        if let url = alt.url { onAction(.openURL(url)) }
+                        else if let slug = alt.websiteSlug {
+                            onAction(.openURL("https://devpulse.sh/apps/\(slug)"))
+                        }
+                    } label: {
+                        Text(alt.name)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.blue)
+                    }
+                    .buttonStyle(.borderless)
+                    Text(alt.tradeoff)
+                        .font(.system(size: 9))
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                    Spacer()
+                    Text("-\(formatMBExp(alt.savingsMB))")
+                        .font(.system(size: 9, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.green)
+                }
+                .padding(.horizontal, 30)
+                .padding(.vertical, 1)
+            }
+        }
+        .padding(.bottom, 2)
+    }
+
+    @ViewBuilder
+    private func difficultyDot(_ d: AppAlternative.Difficulty) -> some View {
+        Circle()
+            .fill(d == .easy ? Color.green : d == .medium ? Color.orange : Color.red)
+            .frame(width: 5, height: 5)
+    }
+
+    private func formatMBExp(_ mb: Int) -> String {
+        mb >= 1024 ? String(format: "%.1f GB", Double(mb) / 1024) : "\(mb) MB"
+    }
+}
+
+// MARK: - Port Section
+
+struct PortSection: View {
+    @ObservedObject var state: AppState
+    var onAction: (AppAction) -> Void
+    @State private var expanded = false
+
+    var body: some View {
+        if let scan = state.portScan {
+            VStack(alignment: .leading, spacing: 0) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
+                } label: {
+                    HStack(spacing: 4) {
+                        SectionLabel("Ports")
+                        if scan.hasIssues {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 8))
+                                .foregroundStyle(.orange)
+                        }
+                        Spacer()
+                        Text("\(scan.devPortCount) listening")
+                            .font(.system(size: 10, weight: .medium, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.tertiary)
+                            .rotationEffect(.degrees(expanded ? 90 : 0))
+                        Text("")
+                            .frame(width: 8)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+
+                // System conflicts (always shown)
+                ForEach(scan.systemConflicts) { port in
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.orange)
+                        Text(":\(port.port)")
+                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        Text(port.processName)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                        Text("(system conflict)")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.orange)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 2)
+                }
+
+                // Port conflicts (always shown)
+                ForEach(scan.conflicts, id: \.port) { conflict in
+                    HStack(spacing: 6) {
+                        Image(systemName: "bolt.trianglebadge.exclamationmark.fill")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.red)
+                        Text(":\(conflict.port)")
+                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        Text("\(conflict.holders.count) processes")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.red)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 2)
+                }
+
+                if expanded {
+                    let devPorts = scan.ports.filter(\.isDevPort)
+                    ForEach(devPorts) { port in
+                        PortRow(port: port, onAction: onAction)
+                    }
+                }
+            }
+            .padding(.bottom, 4)
+        }
+    }
+}
+
+struct PortRow: View {
+    let port: ListeningPort
+    var onAction: (AppAction) -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(":\(port.port)")
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .foregroundStyle(.primary)
+                .frame(width: 50, alignment: .trailing)
+            Text(port.displayName)
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Spacer()
+            if isHovered {
+                Button {
+                    onAction(.killPort(port.pid))
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 3)
+        .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
+    }
+}
+
+// MARK: - Dev Artifact Section
+
+struct DevArtifactSection: View {
+    @ObservedObject var state: AppState
+    var onAction: (AppAction) -> Void
+    @State private var expanded = false
+
+    var body: some View {
+        if let scan = state.devArtifactScan {
+            VStack(alignment: .leading, spacing: 0) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
+                } label: {
+                    HStack(spacing: 4) {
+                        SectionLabel("Dev Disk Usage")
+                        Spacer()
+                        Text(scan.totalFormatted)
+                            .font(.system(size: 10, weight: .medium, design: .monospaced))
+                            .foregroundStyle(scan.totalMB >= 10240 ? Color.orange : .secondary)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.tertiary)
+                            .rotationEffect(.degrees(expanded ? 90 : 0))
+                        Text("")
+                            .frame(width: 8)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+
+                // Compact: top categories
+                if !expanded {
+                    ForEach(scan.byCategory.prefix(3), id: \.category) { cat in
+                        HStack(spacing: 8) {
+                            Image(systemName: artifactIcon(cat.category))
+                                .font(.system(size: 9))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 14)
+                            Text(cat.category)
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                            if cat.count > 1 {
+                                Text("(\(cat.count))")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            Spacer()
+                            Text(formatMB(cat.totalMB))
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundStyle(.primary)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 2)
+                    }
+                } else {
+                    // Expanded: all artifacts with cleanup
+                    ForEach(scan.artifacts.prefix(15)) { artifact in
+                        ArtifactRow(artifact: artifact, onAction: onAction)
+                    }
+
+                    // Stale cleanup button
+                    let staleItems = scan.artifacts.filter(\.isStale)
+                    if !staleItems.isEmpty {
+                        Button {
+                            onAction(.cleanArtifacts(staleItems))
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 9))
+                                Text("Clean stale artifacts (\(scan.staleFormatted))")
+                                    .font(.system(size: 10))
+                            }
+                            .foregroundStyle(.orange)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                }
+            }
+            .padding(.bottom, 4)
+        }
+    }
+
+    private func artifactIcon(_ category: String) -> String {
+        switch category {
+        case "node_modules": return "shippingbox"
+        case "Homebrew Cache": return "mug"
+        case "Cargo Registry": return "gearshape"
+        case "Gradle Cache": return "building.2"
+        case "pip Cache": return "circle.grid.3x3"
+        case "CocoaPods Cache": return "leaf"
+        case "Ollama Models": return "brain"
+        case "HuggingFace Cache": return "face.smiling"
+        case "npm Cache", "Yarn Cache", "pnpm Cache", "Bun Cache": return "shippingbox"
+        default: return "folder"
+        }
+    }
+
+    private func formatMB(_ mb: Int) -> String {
+        mb >= 1024 ? String(format: "%.1f GB", Double(mb) / 1024) : "\(mb) MB"
+    }
+}
+
+struct ArtifactRow: View {
+    let artifact: DevArtifact
+    var onAction: (AppAction) -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(artifact.project ?? artifact.category)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    Text(artifact.category)
+                        .font(.system(size: 9))
+                        .foregroundStyle(.tertiary)
+                    if artifact.isStale {
+                        Text("\(artifact.daysSinceAccess)d old")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.orange)
+                    }
+                }
+            }
+            Spacer()
+            Text(artifact.sizeFormatted)
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(.secondary)
+            if isHovered {
+                Button {
+                    onAction(.cleanArtifacts([artifact]))
+                } label: {
+                    Image(systemName: "trash.circle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 3)
+        .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
+    }
+}
+
+// MARK: - AI Memory Section
+
+struct AIMemorySection: View {
+    @ObservedObject var state: AppState
+    var onAction: (AppAction) -> Void
+    @State private var expanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
+            } label: {
+                HStack(spacing: 4) {
+                    SectionLabel("AI Memory")
+                    if let ollama = state.ollamaStatus, ollama.isRunning {
+                        Text("\(ollama.loadedModels.count) model\(ollama.loadedModels.count == 1 ? "" : "s")")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.tertiary)
+                    }
+                    Spacer()
+                    if let budget = state.aiMemoryBudget {
+                        Text(budget.availableForAIFormatted + " free")
+                            .font(.system(size: 10, weight: .medium, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(expanded ? 90 : 0))
+                    Text("")
+                        .frame(width: 8)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+
+            // Ollama status + loaded models
+            if let ollama = state.ollamaStatus, ollama.isRunning {
+                if !ollama.loadedModels.isEmpty {
+                    ForEach(ollama.loadedModels, id: \.name) { model in
+                        OllamaModelRow(model: model, onAction: onAction)
+                    }
+
+                    // Unload all button if multiple models
+                    if ollama.loadedModels.count > 1 {
+                        Button {
+                            onAction(.ollamaUnloadAll)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark.circle")
+                                    .font(.system(size: 9))
+                                Text("Unload all (\(ollama.totalVRAMFormatted))")
+                                    .font(.system(size: 10))
+                            }
+                            .foregroundStyle(.orange)
+                            .padding(.horizontal, 44)
+                            .padding(.vertical, 3)
+                        }
+                        .buttonStyle(.borderless)
+                    }
+
+                    // Idle model warning
+                    if ollama.hasIdleModels {
+                        HStack(spacing: 4) {
+                            Image(systemName: "moon.zzz.fill")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.orange)
+                            Text("\(ollama.idleVRAMFormatted) held by idle model\(ollama.idleModels.count == 1 ? "" : "s")")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 3)
+                    }
+                } else {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.green)
+                        Text("Ollama running — no models loaded")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 3)
+                }
+            }
+
+            // Expanded: memory budget breakdown
+            if expanded, let budget = state.aiMemoryBudget {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("MEMORY BUDGET")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .textCase(.uppercase)
+                        .padding(.top, 4)
+
+                    AIBudgetBar(budget: budget)
+
+                    BudgetRow(label: "Total RAM", valueMB: budget.totalRAMMB, color: .primary)
+                    BudgetRow(label: "GPU Ceiling (75%)", valueMB: budget.gpuCeilingMB, color: .secondary)
+                    BudgetRow(label: "Dev Stack (IDE/Docker/etc)", valueMB: budget.devStackMB, color: .blue)
+                    if budget.ollamaModelsMB > 0 {
+                        BudgetRow(label: "Ollama Models", valueMB: budget.ollamaModelsMB, color: .purple)
+                    }
+                    BudgetRow(label: "Available for AI", valueMB: budget.availableForAIMB, color: .green)
+                    if budget.reclaimableFromIdleMB > 0 {
+                        BudgetRow(label: "Reclaimable (idle)", valueMB: budget.reclaimableFromIdleMB, color: .orange)
+                    }
+
+                    // Context window estimates
+                    if budget.availableForAIMB > 512 || budget.reclaimableFromIdleMB > 0 {
+                        Text("MAX CONTEXT (ESTIMATE)")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(.tertiary)
+                            .textCase(.uppercase)
+                            .padding(.top, 6)
+
+                        contextRow("7B model", budget.maxContextTokens(modelParamB: 7))
+                        contextRow("14B model", budget.maxContextTokens(modelParamB: 14))
+                        contextRow("32B model", budget.maxContextTokens(modelParamB: 32))
+                        contextRow("70B model", budget.maxContextTokens(modelParamB: 70))
+                    }
+
+                    // Fragmentation warning
+                    if let warning = budget.fragmentationWarning {
+                        HStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.orange)
+                            Text(warning)
+                                .font(.system(size: 9))
+                                .foregroundStyle(.orange)
+                        }
+                        .padding(.top, 4)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 6)
+            }
+        }
+        .padding(.bottom, 4)
+    }
+
+    @ViewBuilder
+    private func contextRow(_ name: String, _ tokens: Int) -> some View {
+        if tokens > 0 {
+            HStack {
+                Text(name)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(formatTokens(tokens))
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(tokens >= 8192 ? Color.primary : Color.orange)
+            }
+        }
+    }
+
+    private func formatTokens(_ tokens: Int) -> String {
+        if tokens >= 1_000_000 { return String(format: "%.0fM tokens", Double(tokens) / 1_000_000) }
+        if tokens >= 1_000 { return String(format: "%.0fK tokens", Double(tokens) / 1_000) }
+        return "\(tokens) tokens"
+    }
+}
+
+struct OllamaModelRow: View {
+    let model: LoadedModel
+    var onAction: (AppAction) -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "brain")
+                .font(.system(size: 9))
+                .foregroundStyle(.purple)
+                .frame(width: 14)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(model.name)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    if !model.quantization.isEmpty {
+                        Text(model.quantization)
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                    }
+                    if let idle = model.idleDuration {
+                        Text(idle)
+                            .font(.system(size: 9))
+                            .foregroundStyle(.orange)
+                    }
+                }
+            }
+            Spacer()
+            Text(model.sizeFormatted)
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .foregroundStyle(.secondary)
+
+            if isHovered {
+                Button {
+                    onAction(.ollamaUnloadModel(model.name))
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
+    }
+}
+
+struct AIBudgetBar: View {
+    let budget: AIMemoryBudget
+
+    var body: some View {
+        let total = Double(budget.gpuCeilingMB)
+        guard total > 0 else { return AnyView(EmptyView()) }
+
+        let devFrac = Double(budget.devStackMB) / total
+        let ollamaFrac = Double(budget.ollamaModelsMB) / total
+        let freeFrac = Double(budget.availableForAIMB) / total
+
+        return AnyView(
+            GeometryReader { geo in
+                HStack(spacing: 1) {
+                    Rectangle()
+                        .fill(Color.blue.opacity(0.7))
+                        .frame(width: geo.size.width * devFrac)
+                    if ollamaFrac > 0.01 {
+                        Rectangle()
+                            .fill(Color.purple.opacity(0.7))
+                            .frame(width: geo.size.width * ollamaFrac)
+                    }
+                    Rectangle()
+                        .fill(Color.green.opacity(0.4))
+                        .frame(width: geo.size.width * freeFrac)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+            }
+            .frame(height: 8)
+        )
+    }
+}
+
+struct BudgetRow: View {
+    let label: String
+    let valueMB: Int
+    let color: Color
+
+    var body: some View {
+        HStack {
+            Circle()
+                .fill(color.opacity(0.7))
+                .frame(width: 6, height: 6)
+            Text(label)
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(formatMB(valueMB))
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(.primary)
+        }
+    }
+
+    private func formatMB(_ mb: Int) -> String {
+        mb >= 1024 ? String(format: "%.1f GB", Double(mb) / 1024) : "\(mb) MB"
+    }
+}
+
 // MARK: - Can I Run?
 
 struct CanIRunSection: View {
@@ -673,7 +1421,7 @@ struct CanIRunSection: View {
                 withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
             } label: {
                 HStack(spacing: 4) {
-                    SectionLabel("Can I Run?")
+                    SectionLabel("Can I Run AI Models?")
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.system(size: 8, weight: .bold))
@@ -923,6 +1671,8 @@ struct ActionSection: View {
             ActionRow(icon: "chart.xyaxis.line", label: "Memory Timeline", shortcut: "T", onAction: { onAction(.showTimeline) })
             ActionRow(icon: "magnifyingglass", label: "Run Full Check", shortcut: "R", onAction: { onAction(.fullCheck) })
             ActionRow(icon: "wand.and.stars", label: "Run Auto-Fix", shortcut: "F", onAction: { onAction(.autoFix) })
+
+            ActionRow(icon: "bell.badge", label: "Test Weekly Summary", shortcut: "W", onAction: { onAction(.debugWeeklySummary) })
         }
         .padding(.vertical, 4)
     }
@@ -1415,6 +2165,11 @@ enum AppAction {
     case toggleLearnMode
     case acceptLearnedPattern(LearnedPattern)
     case dismissLearnedPattern(LearnedPattern)
+    case ollamaUnloadModel(String)
+    case ollamaUnloadAll
+    case killPort(Int32)
+    case cleanArtifacts([DevArtifact])
+    case debugWeeklySummary
     case quitApp
 }
 
