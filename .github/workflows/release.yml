@@ -18,7 +18,7 @@ jobs:
 
       - name: Build universal binary
         run: |
-          cd DevPulse.app
+          cd DevPulse
           swift build -c release --arch arm64 --arch x86_64
 
       - name: Create app bundle
@@ -27,7 +27,7 @@ jobs:
           rm -rf "$APP_BUNDLE"
           mkdir -p "$APP_BUNDLE/Contents/MacOS"
           mkdir -p "$APP_BUNDLE/Contents/Resources"
-          cp "DevPulse.app/.build/apple/Products/Release/DevPulse" "$APP_BUNDLE/Contents/MacOS/"
+          cp "DevPulse/.build/apple/Products/Release/DevPulse" "$APP_BUNDLE/Contents/MacOS/"
 
           BUILD_TIME=$(date '+%Y-%m-%d %H:%M:%S')
           cat > "$APP_BUNDLE/Contents/Info.plist" << EOF
