@@ -14,6 +14,7 @@ enum CLI {
     /// Recognized subcommand strings. If the first arg matches, run as CLI.
     static let subcommands: Set<String> = [
         "status", "processes", "zombies", "ports", "ai", "clean", "watch",
+        "babysit",
         "help", "--help", "-h", "version", "--version",
     ]
 
@@ -48,6 +49,7 @@ enum CLI {
         case "ai":                return runAI(json: json, flags: flags)
         case "clean":             return runClean(flags: flags, json: json)
         case "watch":             return runWatch(flags: flags)
+        case "babysit":           return runBabysit(flags: flags)
         case "version", "--version":
             print(versionString())
             return 0
@@ -65,6 +67,7 @@ enum CLI {
     static func runStatus(json: Bool) -> Int32 {
         let stats = MemoryStats.current()
         let gpu = getGPUMemoryInfo()
+        let battery = getBatteryStats()
         let zombies = getZombieProcesses()
         let inactive = getInactiveDevServers()
 
@@ -96,6 +99,16 @@ enum CLI {
                     "ceilingMB": gpu.recommendedMaxMB,
                 ]
             }
+            if let b = battery {
+                var bd: [String: Any] = [
+                    "percent": b.percent,
+                    "onAC": b.onAC,
+                    "isCharging": b.isCharging,
+                    "lowPowerMode": b.lowPowerMode,
+                ]
+                if let m = b.timeToEmptyMinutes { bd["timeToEmptyMinutes"] = m }
+                out["battery"] = bd
+            }
             printJSON(out)
             return 0
         }
@@ -105,6 +118,15 @@ enum CLI {
         print(String(format: "swap    %.1f GB", stats.swapUsedGB))
         if let gpu {
             print(String(format: "gpu     %.1f / %.1f GB", gpu.allocatedGB, gpu.recommendedMaxGB))
+        }
+        if let b = battery {
+            let charge = b.onAC ? (b.isCharging ? "charging" : "AC") : "battery"
+            var line = String(format: "battery %d%%  [%@]", b.percent, charge)
+            if let m = b.timeToEmptyMinutes, m > 0 {
+                line += "  \(m / 60)h \(m % 60)m to empty"
+            }
+            if b.lowPowerMode { line += "  · low-power mode" }
+            print(line)
         }
 
         let zombieMB = zombies.reduce(0) { $0 + $1.totalMB }
@@ -256,10 +278,53 @@ enum CLI {
 
         // Pre-flight predicate: agents pass --before-load <MB> and branch on
         // exit code. Exit 0 = fits, 1 = won't fit at all, 2 = fits after
-        // unloading idle models. Recommendation is printed (or JSON-emitted).
+        // unloading idle models. With --auto-clean, perform the cleanup
+        // (unload idle Ollama models, kill zombies) and re-evaluate; the
+        // final exit code reflects the post-cleanup state.
         if let beforeLoadMB = parseIntFlag(flags, name: "--before-load") {
+            let autoClean = flags.contains("--auto-clean")
             let prediction = budget.predictLoadImpact(modelSizeMB: beforeLoadMB)
             let (code, verdict) = beforeLoadVerdict(prediction)
+
+            // Auto-clean path: only useful if cleanup could help — we need
+            // either reclaimable idle models or zombies to act on.
+            if autoClean, code != 0 {
+                let actions = autoCleanForLoad(
+                    monitor: monitor,
+                    ollama: status,
+                    json: json
+                )
+                // Re-evaluate after cleanup.
+                let stats2 = MemoryStats.current()
+                let gpu2 = getGPUMemoryInfo()
+                let ollama2 = monitor.getStatus()
+                let budget2 = AIMemoryBudget.calculate(stats: stats2, gpu: gpu2, ollama: ollama2)
+                let prediction2 = budget2.predictLoadImpact(modelSizeMB: beforeLoadMB)
+                let (code2, verdict2) = beforeLoadVerdict(prediction2)
+
+                if json {
+                    var out: [String: Any] = [
+                        "modelSizeMB": beforeLoadMB,
+                        "autoClean": true,
+                        "before": ["verdict": verdict, "exitCode": code, "description": prediction.description],
+                        "actions": actions,
+                        "after": [
+                            "verdict": verdict2,
+                            "exitCode": code2,
+                            "description": prediction2.description,
+                            "availableForAIMB": budget2.availableForAIMB,
+                        ],
+                    ]
+                    out["exitCode"] = code2
+                    out["verdict"] = verdict2
+                    printJSON(out)
+                } else {
+                    print("before: \(prediction.description)")
+                    for a in actions { print("  - \(a)") }
+                    print("after:  \(prediction2.description)")
+                }
+                return code2
+            }
 
             if json {
                 var out: [String: Any] = [
@@ -398,7 +463,20 @@ enum CLI {
             let zombies = getZombieProcesses()
             let inactive = getInactiveDevServers()
             let ollama = monitor.getStatus()
+            let battery = getBatteryStats()
             let budget = AIMemoryBudget.calculate(stats: stats, gpu: gpu, ollama: ollama)
+
+            var batteryDict: [String: Any]? = nil
+            if let b = battery {
+                var d: [String: Any] = [
+                    "percent": b.percent,
+                    "onAC": b.onAC,
+                    "isCharging": b.isCharging,
+                    "lowPowerMode": b.lowPowerMode,
+                ]
+                if let m = b.timeToEmptyMinutes { d["timeToEmptyMinutes"] = m }
+                batteryDict = d
+            }
 
             let tick: [String: Any] = [
                 "ts": ISO8601DateFormatter().string(from: Date()),
@@ -410,6 +488,7 @@ enum CLI {
                     "status": stats.status.rawValue,
                 ],
                 "gpu": gpu.map { ["allocatedMB": $0.allocatedMB, "ceilingMB": $0.recommendedMaxMB] } as Any,
+                "battery": batteryDict as Any,
                 "zombies": [
                     "count": zombies.reduce(0) { $0 + $1.count },
                     "totalMB": zombies.reduce(0) { $0 + $1.totalMB },
@@ -435,6 +514,117 @@ enum CLI {
         }
     }
 
+    // MARK: - Babysit (long-run watchdog)
+    //
+    // Built for the literal "70B model on an 11-hour transatlantic flight"
+    // pattern: long-running local AI workload, no internet, intermittent
+    // power. Babysit watches free VRAM + battery, auto-cleans when pressure
+    // builds, and emits NDJSON events the caller can checkpoint on.
+
+    static func runBabysit(flags: [String]) -> Int32 {
+        let interval = parseIntFlag(flags, name: "--interval") ?? 30
+        let durationMin = parseIntFlag(flags, name: "--duration")
+        // Free VRAM threshold (MB). Below this we trigger auto-clean.
+        let targetFreeMB = parseIntFlag(flags, name: "--target-free-mb") ?? 2048
+        let json = flags.contains("--json")
+
+        setlinebuf(stdout)
+        signal(SIGINT) { _ in exit(0) }
+        signal(SIGTERM) { _ in exit(0) }
+
+        let monitor = OllamaMonitor()
+        let started = Date()
+        var ticks = 0
+        var cleanupRuns = 0
+        var totalReclaimedMB = 0
+
+        func emit(event: String, payload: [String: Any]) {
+            if json {
+                var p = payload
+                p["ts"] = ISO8601DateFormatter().string(from: Date())
+                p["event"] = event
+                if let data = try? JSONSerialization.data(withJSONObject: p, options: [.sortedKeys]),
+                   let line = String(data: data, encoding: .utf8) {
+                    print(line)
+                }
+            } else {
+                let stamp = ISO8601DateFormatter().string(from: Date())
+                let detail = payload.map { "\($0)=\($1)" }.sorted().joined(separator: " ")
+                print("[\(stamp)] \(event)  \(detail)")
+            }
+        }
+
+        emit(event: "started", payload: [
+            "intervalSec": interval,
+            "targetFreeMB": targetFreeMB,
+            "durationMin": durationMin as Any,
+        ])
+
+        while true {
+            ticks += 1
+            let stats = MemoryStats.current()
+            let gpu = getGPUMemoryInfo()
+            let ollama = monitor.getStatus()
+            let battery = getBatteryStats()
+            let budget = AIMemoryBudget.calculate(stats: stats, gpu: gpu, ollama: ollama)
+
+            var pressureReasons: [String] = []
+            if budget.availableForAIMB < targetFreeMB {
+                pressureReasons.append("free<\(targetFreeMB)MB")
+            }
+            if let b = battery, !b.onAC, b.percent <= 20 {
+                pressureReasons.append("battery<=20%")
+            }
+            if stats.swapUsedGB > 10 {
+                pressureReasons.append("swap>10GB")
+            }
+
+            emit(event: "tick", payload: [
+                "tickNum": ticks,
+                "availableForAIMB": budget.availableForAIMB,
+                "swapGB": stats.swapUsedGB,
+                "memUsedPercent": Int(stats.usedPercent),
+                "batteryPercent": battery?.percent as Any,
+                "onAC": battery?.onAC as Any,
+                "pressure": pressureReasons.joined(separator: ","),
+            ])
+
+            // Trigger auto-clean only when there's something to reclaim and
+            // we're under pressure. Avoid noise on healthy ticks.
+            let canReclaim = (ollama?.hasIdleModels ?? false) || !getZombieProcesses().isEmpty
+            if !pressureReasons.isEmpty && canReclaim {
+                let actions = autoCleanForLoad(monitor: monitor, ollama: ollama, json: json)
+                cleanupRuns += 1
+
+                let after = MemoryStats.current()
+                let afterGPU = getGPUMemoryInfo()
+                let afterBudget = AIMemoryBudget.calculate(stats: after, gpu: afterGPU, ollama: monitor.getStatus())
+                let reclaimed = afterBudget.availableForAIMB - budget.availableForAIMB
+                if reclaimed > 0 { totalReclaimedMB += reclaimed }
+
+                emit(event: "cleanup", payload: [
+                    "reasons": pressureReasons.joined(separator: ","),
+                    "actions": actions,
+                    "reclaimedMB": max(reclaimed, 0),
+                    "availableForAIMB": afterBudget.availableForAIMB,
+                ])
+            }
+
+            // Duration cap.
+            if let mins = durationMin, Date().timeIntervalSince(started) >= TimeInterval(mins * 60) {
+                emit(event: "done", payload: [
+                    "ticks": ticks,
+                    "cleanupRuns": cleanupRuns,
+                    "totalReclaimedMB": totalReclaimedMB,
+                    "elapsedMin": Int(Date().timeIntervalSince(started) / 60),
+                ])
+                return 0
+            }
+
+            Thread.sleep(forTimeInterval: TimeInterval(interval))
+        }
+    }
+
     /// Map a load prediction to a CLI exit code + short verdict tag.
     /// 0 = fits, 1 = won't fit, 2 = fits after unloading idle models, 3 = tight.
     static func beforeLoadVerdict(_ p: LoadPrediction) -> (code: Int32, verdict: String) {
@@ -444,6 +634,44 @@ enum CLI {
         case .fitsAfterUnload: return (2, "fits-after-unload")
         case .willNotFit:      return (1, "wont-fit")
         }
+    }
+
+    /// Perform the safe cleanup actions before loading a large model:
+    /// unload idle Ollama models and kill orphaned dev procs. Returns
+    /// human-readable action strings for reporting back to the caller.
+    static func autoCleanForLoad(
+        monitor: OllamaMonitor,
+        ollama: OllamaStatus?,
+        json: Bool
+    ) -> [String] {
+        var actions: [String] = []
+
+        // 1. Unload idle Ollama models (frees VRAM directly).
+        if let s = ollama {
+            for model in s.idleModels {
+                if monitor.unloadModel(model.name) {
+                    actions.append("unloaded idle ollama model: \(model.name) (\(model.sizeFormatted))")
+                }
+            }
+        }
+
+        // 2. Kill zombie procs (orphaned dev tools, stale LSPs, watchers).
+        let zombies = getZombieProcesses()
+        if !zombies.isEmpty {
+            let pids = zombies.flatMap(\.pids)
+            let totalMB = zombies.reduce(0) { $0 + $1.totalMB }
+            for pid in pids { kill(pid, SIGTERM) }
+            Thread.sleep(forTimeInterval: 1)
+            for pid in pids { kill(pid, SIGKILL) }
+            actions.append("killed \(pids.count) zombie procs (\(formatMB(totalMB)) reclaimed)")
+        }
+
+        // Give the kernel a moment to reflect freed memory before re-eval.
+        if !actions.isEmpty {
+            Thread.sleep(forTimeInterval: 1)
+        }
+
+        return actions
     }
 
     // MARK: - Helpers
@@ -460,8 +688,13 @@ enum CLI {
           zombies [--kill] [--min-mb N]  orphaned procs / stale LSPs / watchers
           ports                        listening dev ports + conflicts
           ai [--before-load <MB>]      Ollama + AI memory budget; pre-flight check
+                                       add --auto-clean to unload idle models and
+                                       kill zombies, then re-evaluate
           clean [--dry-run]            reclaim DerivedData / docker / dev caches
           watch [--interval SECS]      stream NDJSON ticks (default 15s)
+          babysit [--target-free-mb N] [--duration MIN] [--json]
+                                       long-run watchdog: auto-cleans when
+                                       VRAM/battery/swap cross thresholds
           version                      print version
 
         global flags:
@@ -474,7 +707,9 @@ enum CLI {
           devpulse status --json | jq .memory.usedGB
           devpulse zombies --json --min-mb 100
           devpulse ai --before-load 8000 || devpulse zombies --kill
+          devpulse ai --before-load 42000 --auto-clean --json
           devpulse watch --interval 30 | your-agent
+          devpulse babysit --duration 660 --json > flight.log
         """)
     }
 

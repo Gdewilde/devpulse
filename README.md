@@ -109,12 +109,16 @@ intelligence the menu bar shows, but scriptable and JSON-emitting — designed
 to be called by local AI models, coding agents, and shell scripts.
 
 ```bash
-devpulse status              # human-readable summary
-devpulse status --json       # machine-readable
-devpulse zombies --kill      # reclaim orphaned dev procs
-devpulse ai --before-load 8000   # exits 0/1/2/3 → fits / wont-fit / unload-first / tight
-devpulse watch --interval 15 # NDJSON stream, one line per tick
+devpulse status                                  # human-readable summary
+devpulse status --json                           # machine-readable
+devpulse zombies --kill                          # reclaim orphaned dev procs
+devpulse ai --before-load 42000 --auto-clean     # pre-flight + auto-reclaim
+devpulse watch --interval 15                     # NDJSON stream
+devpulse babysit --target-free-mb 8192 --json    # long-run watchdog
 ```
+
+`status` and `watch` include battery — percent, AC state, time-to-empty,
+low-power mode — so agents on battery can react before the OS does.
 
 ### Why this matters for local AI
 
@@ -143,6 +147,18 @@ the unload candidates so agents can act without re-querying.
 `gpu.allocatedMB / gpu.ceilingMB > 0.9` by shrinking its KV cache or
 evicting older context — instead of letting the OS swap and tank
 inference latency.
+
+**Long-run watchdog.** `devpulse babysit --target-free-mb 8192 --json`
+runs as a background process during multi-hour workloads. It watches free
+VRAM, battery, and swap; when pressure builds and there's something safe
+to reclaim, it auto-cleans (unloads idle models, kills zombies) and
+emits a `cleanup` NDJSON event your script can checkpoint on. Built for
+the literal "70B model on an 11-hour transatlantic flight" workflow.
+
+```bash
+devpulse babysit --duration 660 --target-free-mb 8192 --json > flight.log &
+ollama run llama3.3:70b < queue.txt
+```
 
 **Tool surface for coding agents.** Claude Code, Cursor, aider, and other
 agents that already shell out can use `devpulse` as a tool: "free up RAM
