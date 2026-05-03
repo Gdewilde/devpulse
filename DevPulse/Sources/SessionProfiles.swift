@@ -86,7 +86,7 @@ class SessionProfileManager {
     private let snapshotsPath: URL
     private let learnSettingsPath: URL
     private(set) var profiles: [SessionProfile]
-    private var snapshots: [AppSnapshot] = []
+    internal var snapshots: [AppSnapshot] = []
     var learnModeEnabled: Bool {
         didSet { saveLearnSettings() }
     }
@@ -190,17 +190,31 @@ class SessionProfileManager {
     func detectPatterns() -> [LearnedPattern] {
         guard snapshots.count >= 6 else { return [] }
 
-        var pairCounts: [Set<String>: Int] = [:]
+        // Key combinations by sorted-and-joined string instead of Set<String>.
+        // A Set<String> dictionary key hashes and compares element-by-element
+        // on every operation; with thousands of snapshots that dominated the
+        // runtime. A simple String key collapses both to a single hash.
+        // Null byte separator can't appear in NSWorkspace app names.
+        let sep = "\u{0}"
+        var counts: [String: Int] = [:]
+        counts.reserveCapacity(snapshots.count * 8)
+
         for snapshot in snapshots {
-            let apps = Set(snapshot.apps)
-            let appList = Array(apps)
-            for i in 0..<appList.count {
-                for j in (i+1)..<appList.count {
-                    let pair: Set<String> = [appList[i], appList[j]]
-                    pairCounts[pair, default: 0] += 1
-                    for k in (j+1)..<appList.count {
-                        let triple: Set<String> = [appList[i], appList[j], appList[k]]
-                        pairCounts[triple, default: 0] += 1
+            // Dedupe + sort once per snapshot so combinations produce a
+            // canonical key without any further set construction.
+            let sorted = Array(Set(snapshot.apps)).sorted()
+            let n = sorted.count
+            guard n >= 2 else { continue }
+
+            for i in 0..<n {
+                let a = sorted[i]
+                for j in (i+1)..<n {
+                    let b = sorted[j]
+                    let pairKey = a + sep + b
+                    counts[pairKey, default: 0] += 1
+                    for k in (j+1)..<n {
+                        let tripleKey = pairKey + sep + sorted[k]
+                        counts[tripleKey, default: 0] += 1
                     }
                 }
             }
@@ -209,16 +223,17 @@ class SessionProfileManager {
         let threshold = max(3, snapshots.count * 4 / 10)
         let existingAppSets = Set(profiles.map { Set($0.apps) })
 
-        var patterns: [LearnedPattern] = []
-        let frequent = pairCounts
-            .filter { $0.value >= threshold && $0.key.count >= 2 }
+        let frequent = counts
+            .filter { $0.value >= threshold }
             .sorted { $0.value > $1.value }
 
-        for (appSet, count) in frequent.prefix(5) {
+        var patterns: [LearnedPattern] = []
+        for (key, count) in frequent.prefix(5) {
+            let apps = key.components(separatedBy: sep)  // already sorted
+            let appSet = Set(apps)
             if existingAppSets.contains(appSet) { continue }
             if patterns.contains(where: { Set($0.apps).isSuperset(of: appSet) }) { continue }
 
-            let apps = appSet.sorted()
             let name = suggestName(for: apps)
             let icon = suggestIcon(for: apps)
 

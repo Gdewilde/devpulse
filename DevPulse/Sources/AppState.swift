@@ -41,6 +41,11 @@ struct OptimizerImpact {
 }
 
     @Published var gpuMemory: GPUMemoryInfo? = nil
+    @Published var ollamaStatus: OllamaStatus? = nil
+    @Published var aiMemoryBudget: AIMemoryBudget? = nil
+    @Published var portScan: PortScanResult? = nil
+    @Published var devArtifactScan: DevArtifactScan? = nil
+    @Published var appRecommendations: [AppRecommendation] = []
     @Published var ssdHealth: SSDHealth? = nil
     @Published var cleanupScan: CleanupScanResult? = nil
     @Published var lastCleanupResult: QuickCleanResult? = nil
