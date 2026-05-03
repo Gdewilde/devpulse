@@ -114,8 +114,17 @@ jobs:
           echo "DMG size:"
           du -h "build/DevPulse-${{ env.VERSION }}-universal.dmg"
 
+      - name: Stable-named alias
+        # Upload a copy at the stable name DevPulse.dmg so links like
+        # /releases/latest/download/DevPulse.dmg work across every release
+        # without per-version edits to the website.
+        run: |
+          cp "build/DevPulse-${{ env.VERSION }}-universal.dmg" "build/DevPulse.dmg"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/DevPulse-${{ env.VERSION }}-universal.dmg
+          files: |
+            build/DevPulse-${{ env.VERSION }}-universal.dmg
+            build/DevPulse.dmg
           generate_release_notes: true
