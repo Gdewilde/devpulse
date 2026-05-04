@@ -37,6 +37,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let timelineStore = TimelineStore()
     private let swapTracker = SwapTracker()
     private let ollamaMonitor = OllamaMonitor()
+    private var activePull: OllamaPullManager?
     private var previousZombiePids: Set<Int32> = []
     private var lastStatus: HealthStatus?
     private var lastHeavyCalcTime: Date = .distantPast
@@ -76,6 +77,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.swapTracker.record(swapGB: self?.appState.stats.swapUsedGB ?? 0)
             self?.updateStatusBar()
             self?.refreshData()
+        }
+
+        // Detect local AI runtimes once at launch (presentation-neutral CTAs)
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let runtimes = LocalAIRuntimes.detect()
+            DispatchQueue.main.async { self?.appState.localAIRuntimes = runtimes }
         }
 
         // Start auto-optimizer
@@ -431,6 +438,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 NSWorkspace.shared.open(url)
             }
 
+        case .copyToClipboard(let text):
+            let pb = NSPasteboard.general
+            pb.clearContents()
+            pb.setString(text, forType: .string)
+
         case .chromeTaskManager:
             popover.performClose(nil)
             DispatchQueue.global(qos: .userInitiated).async {
@@ -540,6 +552,78 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 _ = self?.ollamaMonitor.unloadAllModels()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self?.refreshData() }
+            }
+
+        case .ollamaLoadModel(let name):
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                _ = self?.ollamaMonitor.loadModel(name)
+                DispatchQueue.main.async { self?.refreshData() }
+            }
+
+        case .ollamaDeleteModel(let name):
+            let alert = NSAlert()
+            alert.messageText = "Delete \(name)?"
+            alert.informativeText = "This removes the model from disk. You can re-pull it later with `ollama pull \(name)`."
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "Delete")
+            alert.addButton(withTitle: "Cancel")
+            if alert.runModal() == .alertFirstButtonReturn {
+                DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                    _ = self?.ollamaMonitor.deleteModel(name)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self?.refreshData() }
+                }
+            }
+
+        case .ollamaPullModel(let slug):
+            // One pull at a time. If a pull is already running, ignore.
+            if activePull != nil { break }
+            let manager = OllamaPullManager(
+                modelName: slug,
+                baseURL: "http://127.0.0.1:11434"
+            ) { [weak self] state in
+                guard let self = self else { return }
+                self.appState.ollamaPull = state
+                if state.isComplete {
+                    self.activePull = nil
+                    // Refresh installed-list to surface the new model.
+                    self.refreshData()
+                    // Auto-clear the success row after a short delay.
+                    if state.error == nil {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                            if self.appState.ollamaPull?.modelName == state.modelName,
+                               self.appState.ollamaPull?.isComplete == true {
+                                self.appState.ollamaPull = nil
+                            }
+                        }
+                    }
+                }
+            }
+            activePull = manager
+            manager.start()
+
+        case .ollamaCancelPull:
+            activePull?.cancel()
+            activePull = nil
+
+        case .ollamaDeleteStale:
+            let stale = appState.ollamaStatus?.staleInstalledModels ?? []
+            guard !stale.isEmpty else { break }
+            let alert = NSAlert()
+            let totalMB = stale.reduce(0) { $0 + $1.sizeMB }
+            let totalStr = totalMB >= 1024 ? String(format: "%.1f GB", Double(totalMB) / 1024) : "\(totalMB) MB"
+            alert.messageText = "Delete \(stale.count) stale model\(stale.count == 1 ? "" : "s")?"
+            alert.informativeText = "Reclaims \(totalStr) by removing models unused for 30+ days:\n\n" +
+                stale.map { "• \($0.name) (\($0.sizeFormatted))" }.joined(separator: "\n")
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "Delete All")
+            alert.addButton(withTitle: "Cancel")
+            if alert.runModal() == .alertFirstButtonReturn {
+                DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                    for m in stale {
+                        _ = self?.ollamaMonitor.deleteModel(m.name)
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self?.refreshData() }
+                }
             }
 
         case .killPort(let pid):

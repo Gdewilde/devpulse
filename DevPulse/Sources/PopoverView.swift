@@ -11,8 +11,14 @@ struct PopoverView: View {
             VStack(alignment: .leading, spacing: 0) {
                 HeaderSection(state: state)
 
-                if state.verdict != nil {
-                    VerdictCard(state: state, onAction: onAction)
+                if state.ollamaStatus?.isRunning == true || state.aiMemoryBudget != nil {
+                    Divider().padding(.horizontal, 16)
+                    AIMemorySection(state: state, onAction: onAction)
+                }
+
+                if !state.modelResults.isEmpty {
+                    Divider().padding(.horizontal, 16)
+                    CanIRunSection(state: state, onAction: onAction)
                 }
 
                 Divider().padding(.horizontal, 16)
@@ -33,14 +39,9 @@ struct PopoverView: View {
                     AlternativesSection(state: state, onAction: onAction)
                 }
 
-                if state.ollamaStatus?.isRunning == true || state.aiMemoryBudget != nil {
+                if state.verdict != nil {
                     Divider().padding(.horizontal, 16)
-                    AIMemorySection(state: state, onAction: onAction)
-                }
-
-                if !state.modelResults.isEmpty {
-                    Divider().padding(.horizontal, 16)
-                    CanIRunSection(state: state, onAction: onAction)
+                    VerdictCard(state: state, onAction: onAction)
                 }
 
                 if let ports = state.portScan, ports.devPortCount > 0 {
@@ -1191,6 +1192,16 @@ struct AIMemorySection: View {
             }
             .buttonStyle(.borderless)
 
+            // Active pull progress (if any)
+            if let pull = state.ollamaPull {
+                PullProgressRow(pull: pull, onAction: onAction)
+            }
+
+            // Ollama not running: show neutral runtime panel
+            if state.ollamaStatus?.isRunning != true {
+                LocalRuntimePanel(runtimes: state.localAIRuntimes, onAction: onAction)
+            }
+
             // Ollama status + loaded models
             if let ollama = state.ollamaStatus, ollama.isRunning {
                 if !ollama.loadedModels.isEmpty {
@@ -1240,6 +1251,54 @@ struct AIMemorySection: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 3)
+                }
+
+                // Installed-on-disk summary (always shown when expanded)
+                if expanded && !ollama.installedModels.isEmpty {
+                    Text("INSTALLED ON DISK")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .textCase(.uppercase)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 6)
+
+                    HStack(spacing: 4) {
+                        Image(systemName: "internaldrive")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                        Text("\(ollama.installedModels.count) model\(ollama.installedModels.count == 1 ? "" : "s") · \(ollama.installedDiskFormatted) on disk")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 2)
+
+                    ForEach(ollama.unloadedInstalledModels, id: \.name) { model in
+                        InstalledModelRow(model: model, onAction: onAction)
+                    }
+
+                    if ollama.staleDiskMB > 0 {
+                        let staleMB = ollama.staleDiskMB
+                        let staleStr = staleMB >= 1024
+                            ? String(format: "%.1f GB", Double(staleMB) / 1024)
+                            : "\(staleMB) MB"
+                        Button {
+                            onAction(.ollamaDeleteStale)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "clock.badge.exclamationmark")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.orange)
+                                Text("Reclaim \(staleStr) — \(ollama.staleInstalledModels.count) model\(ollama.staleInstalledModels.count == 1 ? "" : "s") unused 30+ days")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.orange)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 3)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.borderless)
+                    }
                 }
             }
 
@@ -1291,6 +1350,7 @@ struct AIMemorySection: View {
                         }
                         .padding(.top, 4)
                     }
+
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 6)
@@ -1298,6 +1358,7 @@ struct AIMemorySection: View {
         }
         .padding(.bottom, 4)
     }
+
 
     @ViewBuilder
     private func contextRow(_ name: String, _ tokens: Int) -> some View {
@@ -1368,6 +1429,204 @@ struct OllamaModelRow: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
+    }
+}
+
+struct LocalRuntimePanel: View {
+    let runtimes: LocalAIRuntimes
+    var onAction: (AppAction) -> Void
+
+    /// All four options, presented equally. Order: alphabetical by name to
+    /// avoid implying a preference.
+    private var options: [(name: String, url: String, installed: Bool, startCmd: String?)] {
+        [
+            ("llama.cpp",  "https://github.com/ggerganov/llama.cpp", runtimes.llamaCppInstalled, nil),
+            ("LM Studio",  "https://lmstudio.ai",                   runtimes.lmStudioInstalled, "open -a 'LM Studio'"),
+            ("MLX",        "https://github.com/ml-explore/mlx",     runtimes.mlxInstalled,      nil),
+            ("Ollama",     "https://ollama.com/download",           runtimes.ollamaInstalled,   "open -a Ollama"),
+        ]
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            // Headline depends on detection state.
+            HStack(spacing: 6) {
+                Image(systemName: runtimes.anyInstalled ? "play.circle" : "shippingbox")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                Text(runtimes.anyInstalled
+                     ? "Local AI runtime detected — start it to begin"
+                     : "Run AI models locally — pick a runtime")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+            }
+
+            // Equal grid of options. Installed ones get a "start" button;
+            // not-installed ones get a "get" link.
+            VStack(spacing: 2) {
+                ForEach(options, id: \.name) { opt in
+                    HStack(spacing: 8) {
+                        Image(systemName: opt.installed ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 9))
+                            .foregroundStyle(opt.installed ? Color.green : Color.gray.opacity(0.5))
+                            .frame(width: 12)
+                        Text(opt.name)
+                            .font(.system(size: 11))
+                            .foregroundStyle(opt.installed ? .primary : .secondary)
+                        Spacer()
+                        if opt.installed, let cmd = opt.startCmd {
+                            Button("Start") {
+                                runShellCommand(cmd)
+                            }
+                            .buttonStyle(.borderless)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.blue)
+                        } else if !opt.installed {
+                            Button("Get") {
+                                onAction(.openURL(opt.url))
+                            }
+                            .buttonStyle(.borderless)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.blue)
+                        } else {
+                            Text("installed")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+    }
+
+    private func runShellCommand(_ cmd: String) {
+        let task = Process()
+        task.launchPath = "/bin/sh"
+        task.arguments = ["-c", cmd]
+        try? task.run()
+    }
+}
+
+struct PullProgressRow: View {
+    let pull: OllamaPullState
+    var onAction: (AppAction) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 6) {
+                Image(systemName: pull.error != nil ? "xmark.circle.fill" :
+                                  pull.isComplete ? "checkmark.circle.fill" : "arrow.down.circle.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(pull.error != nil ? Color.red :
+                                     pull.isComplete ? Color.green : Color.blue)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(pull.modelName)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.primary)
+                    HStack(spacing: 6) {
+                        Text(pull.status)
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                        if !pull.bytesText.isEmpty {
+                            Text(pull.bytesText)
+                                .font(.system(size: 9, design: .monospaced))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+                Spacer()
+                Text(pull.percentText)
+                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(pull.error != nil ? .red : .primary)
+                if !pull.isComplete {
+                    Button {
+                        onAction(.ollamaCancelPull)
+                    } label: {
+                        Image(systemName: "xmark.circle")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Cancel pull")
+                }
+            }
+            if pull.totalBytes > 0 && !pull.isComplete {
+                ProgressView(value: pull.percent)
+                    .progressViewStyle(.linear)
+                    .tint(.blue)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 4)
+    }
+}
+
+struct InstalledModelRow: View {
+    let model: InstalledModel
+    var onAction: (AppAction) -> Void
+    @State private var isHovered = false
+    @State private var loading = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "shippingbox")
+                .font(.system(size: 9))
+                .foregroundStyle(.tertiary)
+                .frame(width: 14)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(model.name)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    if !model.quantization.isEmpty {
+                        Text(model.quantization)
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                    }
+                    if model.daysSinceModified >= 30 {
+                        Text("\(model.daysSinceModified)d old")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.orange)
+                    }
+                }
+            }
+            Spacer()
+            Text(model.sizeFormatted)
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(.tertiary)
+
+            if isHovered {
+                Button {
+                    loading = true
+                    onAction(.ollamaLoadModel(model.name))
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) { loading = false }
+                } label: {
+                    Image(systemName: loading ? "hourglass" : "play.circle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(loading ? Color.secondary : Color.green)
+                }
+                .buttonStyle(.borderless)
+                .help("Load \(model.name) into VRAM")
+                .disabled(loading)
+
+                Button {
+                    onAction(.ollamaDeleteModel(model.name))
+                } label: {
+                    Image(systemName: "trash.circle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .help("Delete \(model.name) from disk")
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 3)
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
     }
@@ -1457,13 +1716,30 @@ struct CanIRunSection: View {
             }
             .buttonStyle(.borderless)
 
+            let installedNames = Set(state.ollamaStatus?.installedModels.map(\.name) ?? [])
+
             if !expanded {
                 // Compact: show top 3 runnable
                 let runnable = state.modelResults.filter { $0.feasibility == .runsGreat || $0.feasibility == .runsOk }
                 ForEach(runnable.prefix(3), id: \.model.name) { result in
-                    ModelRow(result: result, onAction: onAction)
+                    ModelRow(result: result, installedNames: installedNames, canInstall: state.ollamaStatus?.isRunning == true, onAction: onAction)
                 }
             } else {
+                // Privacy note: addresses the natural question after any AI-supply-chain
+                // headline ("are these models safe to run?"). Stays factual.
+                HStack(spacing: 6) {
+                    Image(systemName: "lock.shield")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.tertiary)
+                    Text("Models run fully offline once downloaded. Weights don't execute code; no data leaves your Mac.")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(2)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 4)
+                .padding(.bottom, 2)
+
                 // Expanded: all models grouped by feasibility
                 let tiers: [(String, [ModelCheckResult])] = [
                     ("Runs Great", state.modelResults.filter { $0.feasibility == .runsGreat }),
@@ -1482,20 +1758,10 @@ struct CanIRunSection: View {
                         .padding(.bottom, 2)
 
                     ForEach(tier.1, id: \.model.name) { result in
-                        ModelRow(result: result, onAction: onAction)
+                        ModelRow(result: result, installedNames: installedNames, canInstall: state.ollamaStatus?.isRunning == true, onAction: onAction)
                     }
                 }
 
-                // Ollama / LM Studio links
-                HStack(spacing: 12) {
-                    Button("Get Ollama") { onAction(.openURL("https://ollama.com/download")) }
-                    Button("Get LM Studio") { onAction(.openURL("https://lmstudio.ai")) }
-                }
-                .buttonStyle(.borderless)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.blue)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 6)
             }
         }
         .padding(.bottom, 4)
@@ -1504,9 +1770,28 @@ struct CanIRunSection: View {
 
 struct ModelRow: View {
     let result: ModelCheckResult
+    var installedNames: Set<String> = []
+    var canInstall: Bool = true
     var onAction: ((AppAction) -> Void)? = nil
     @State private var isHovered = false
     @State private var showLinks = false
+    @State private var copied = false
+
+    private var isInstalled: Bool {
+        guard let slug = result.model.ollamaSlug else { return false }
+        if installedNames.contains(slug) { return true }
+        let base = slug.split(separator: ":").first.map(String.init) ?? slug
+        return installedNames.contains { $0.hasPrefix(base + ":") }
+    }
+
+    private var statusText: String {
+        switch result.feasibility {
+        case .runsGreat: return "fits comfortably"
+        case .runsOk: return "fits but tight"
+        case .afterCleanup: return "fits after cleanup"
+        case .tooHeavy: return "too heavy"
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -1515,28 +1800,78 @@ struct ModelRow: View {
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: iconName)
-                        .font(.system(size: 9))
+                        .font(.system(size: 11))
                         .foregroundStyle(iconColor)
                         .frame(width: 14)
-                    Text(result.model.name)
-                        .font(.system(size: 11))
-                        .foregroundStyle(textColor)
-                        .lineLimit(1)
-                    if isHovered && onAction != nil {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 7, weight: .bold))
-                            .foregroundStyle(.tertiary)
+                    VStack(alignment: .leading, spacing: 1) {
+                        HStack(spacing: 4) {
+                            Text(result.model.name)
+                                .font(.system(size: 11))
+                                .foregroundStyle(textColor)
+                                .lineLimit(1)
+                            if isInstalled {
+                                Text("installed")
+                                    .font(.system(size: 8, weight: .medium))
+                                    .foregroundStyle(.green)
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 1)
+                                    .background(Color.green.opacity(0.15))
+                                    .clipShape(Capsule())
+                            }
+                        }
+                        HStack(spacing: 6) {
+                            Text(result.bestQuant.level)
+                                .font(.system(size: 9, design: .monospaced))
+                                .foregroundStyle(.tertiary)
+                            if !result.model.lab.isEmpty {
+                                Text("·")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.tertiary)
+                                Text(result.model.lab)
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            Text(statusText)
+                                .font(.system(size: 9))
+                                .foregroundStyle(.tertiary)
+                        }
                     }
                     Spacer()
-                    Text(result.bestQuant.level)
+                    Text(fmtMB(result.bestQuant.ramRequiredMB))
                         .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(.tertiary)
-                    Text("\(result.bestQuant.ramRequiredMB / 1024)G")
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.quaternary)
+                        .foregroundStyle(.secondary)
+
+                    if isHovered, let onAction = onAction, let slug = result.model.ollamaSlug {
+                        if canInstall, !isInstalled, result.feasibility != .tooHeavy {
+                            Button {
+                                onAction(.ollamaPullModel(slug))
+                            } label: {
+                                Image(systemName: "arrow.down.circle.fill")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(Color.green)
+                            }
+                            .buttonStyle(.borderless)
+                            .help("ollama pull \(slug)")
+                        }
+                        if let pullCmd = result.model.ollamaPullCommand {
+                            Button {
+                                onAction(.copyToClipboard(pullCmd))
+                                withAnimation { copied = true }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                    withAnimation { copied = false }
+                                }
+                            } label: {
+                                Image(systemName: copied ? "checkmark.circle.fill" : "doc.on.doc")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(copied ? Color.green : Color.secondary)
+                            }
+                            .buttonStyle(.borderless)
+                            .help(copied ? "Copied!" : "Copy: \(pullCmd)")
+                        }
+                    }
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 2)
+                .padding(.vertical, 3)
                 .background(isHovered ? Color.primary.opacity(0.04) : .clear)
                 .contentShape(Rectangle())
             }
@@ -1545,58 +1880,94 @@ struct ModelRow: View {
             .help("\(result.model.name) (\(result.bestQuant.level)) — needs \(result.bestQuant.ramRequiredMB / 1024) GB. Tasks: \(result.model.tasks.joined(separator: ", "))")
 
             if showLinks, let onAction = onAction {
-                HStack(spacing: 10) {
-                    if let ollamaURL = result.model.ollamaURL {
-                        Button {
-                            onAction(.openURL(ollamaURL))
-                        } label: {
-                            HStack(spacing: 3) {
-                                Image(systemName: "arrow.down.circle")
-                                    .font(.system(size: 9))
-                                Text("Ollama")
-                                    .font(.system(size: 10, weight: .medium))
+                VStack(alignment: .leading, spacing: 4) {
+                    // Primary action: in-app install when Ollama is running.
+                    HStack(spacing: 10) {
+                        if canInstall, !isInstalled, result.feasibility != .tooHeavy,
+                           let slug = result.model.ollamaSlug {
+                            Button {
+                                onAction(.ollamaPullModel(slug))
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "arrow.down.circle.fill")
+                                        .font(.system(size: 11))
+                                    Text("Install")
+                                        .font(.system(size: 11, weight: .semibold))
+                                }
+                                .foregroundStyle(Color.green)
                             }
-                            .foregroundStyle(.blue)
+                            .buttonStyle(.borderless)
+                            .help("Install via Ollama API with live progress")
                         }
-                        .buttonStyle(.borderless)
+
+                        if let ollamaURL = result.model.ollamaURL {
+                            Button {
+                                onAction(.openURL(ollamaURL))
+                            } label: {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "arrow.up.right.square")
+                                        .font(.system(size: 9))
+                                    Text("Open page")
+                                        .font(.system(size: 10, weight: .medium))
+                                }
+                                .foregroundStyle(.blue)
+                            }
+                            .buttonStyle(.borderless)
+                            .help(ollamaURL)
+                        }
+
+                        if let webURL = result.model.websiteURL {
+                            Button {
+                                onAction(.openURL(webURL))
+                            } label: {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "globe")
+                                        .font(.system(size: 9))
+                                    Text("Details")
+                                        .font(.system(size: 10, weight: .medium))
+                                }
+                                .foregroundStyle(.blue)
+                            }
+                            .buttonStyle(.borderless)
+                        }
+
+                        Spacer()
                     }
 
+                    // Always-visible terminal command, even when Ollama isn't running.
                     if let pullCmd = result.model.ollamaPullCommand {
                         Button {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(pullCmd, forType: .string)
+                            onAction(.copyToClipboard(pullCmd))
+                            withAnimation { copied = true }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                withAnimation { copied = false }
+                            }
                         } label: {
-                            HStack(spacing: 3) {
-                                Image(systemName: "doc.on.clipboard")
+                            HStack(spacing: 4) {
+                                Image(systemName: copied ? "checkmark.circle.fill" : "doc.on.clipboard")
                                     .font(.system(size: 9))
+                                    .foregroundStyle(copied ? Color.green : Color.secondary)
                                 Text(pullCmd)
                                     .font(.system(size: 10, design: .monospaced))
-                            }
-                            .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.borderless)
-                        .help("Copy to clipboard")
-                    }
-
-                    if let webURL = result.model.websiteURL {
-                        Button {
-                            onAction(.openURL(webURL))
-                        } label: {
-                            HStack(spacing: 3) {
-                                Image(systemName: "globe")
+                                    .foregroundStyle(.secondary)
+                                Text(copied ? "(copied)" : "(click to copy)")
                                     .font(.system(size: 9))
-                                Text("Details")
-                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundStyle(.tertiary)
                             }
-                            .foregroundStyle(.blue)
                         }
                         .buttonStyle(.borderless)
+                        .help("Run in your terminal to download the model")
                     }
 
-                    Spacer()
+                    // License + lab footnote.
+                    if !result.model.license.isEmpty || !result.model.lab.isEmpty {
+                        Text([result.model.lab, result.model.license].filter { !$0.isEmpty }.joined(separator: " · "))
+                            .font(.system(size: 9))
+                            .foregroundStyle(.tertiary)
+                    }
                 }
                 .padding(.horizontal, 38)
-                .padding(.vertical, 4)
+                .padding(.vertical, 6)
                 .background(Color.primary.opacity(0.02))
             }
         }
@@ -2261,6 +2632,12 @@ enum AppAction {
     case dismissLearnedPattern(LearnedPattern)
     case ollamaUnloadModel(String)
     case ollamaUnloadAll
+    case ollamaLoadModel(String)
+    case ollamaDeleteModel(String)
+    case ollamaDeleteStale
+    case ollamaPullModel(String)
+    case ollamaCancelPull
+    case copyToClipboard(String)
     case killPort(Int32)
     case cleanArtifacts([DevArtifact])
     case debugWeeklySummary

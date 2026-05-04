@@ -1,0 +1,1453 @@
+[
+  {
+    "name": "TinyLlama 1.1B",
+    "slug": "tinyllama-1.1b",
+    "provider": "TinyLlama",
+    "description": "Ultra-compact model that runs on virtually any Mac. Great for experimentation and lightweight chat tasks.",
+    "parameters": "1.1B",
+    "parametersBn": 1.1,
+    "architecture": "dense",
+    "contextWindow": "2K",
+    "contextTokens": 2048,
+    "license": "Apache 2.0",
+    "commercial": true,
+    "capabilities": [
+      "chat"
+    ],
+    "quantizations": [
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "0.8 GB",
+        "vramGb": 0.8,
+        "quality": "Good"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "1.2 GB",
+        "vramGb": 1.2,
+        "quality": "Excellent"
+      },
+      {
+        "format": "F16",
+        "bits": 16,
+        "vram": "2.2 GB",
+        "vramGb": 2.2,
+        "quality": "Lossless"
+      }
+    ],
+    "minRamGb": 1,
+    "recommendedRamGb": 2,
+    "releaseDate": "2024-01",
+    "ollamaTag": "tinyllama",
+    "tips": [
+      "Perfect for testing your local AI setup before committing to larger models",
+      "Runs comfortably alongside Chrome, VS Code, and Docker on 8 GB Macs",
+      "Use Q4_K_M quantization \u2014 quality is nearly identical to F16 at this size"
+    ]
+  },
+  {
+    "name": "Gemma 3 1B",
+    "slug": "gemma3-1b",
+    "provider": "Google",
+    "description": "Google's tiny Gemma model. Surprisingly capable for its size, with vision support.",
+    "parameters": "1B",
+    "parametersBn": 1,
+    "architecture": "dense",
+    "contextWindow": "32K",
+    "contextTokens": 32768,
+    "license": "Gemma",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "vision",
+      "edge"
+    ],
+    "quantizations": [
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "0.7 GB",
+        "vramGb": 0.7,
+        "quality": "Good"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "1.1 GB",
+        "vramGb": 1.1,
+        "quality": "Excellent"
+      },
+      {
+        "format": "F16",
+        "bits": 16,
+        "vram": "2.0 GB",
+        "vramGb": 2,
+        "quality": "Lossless"
+      }
+    ],
+    "minRamGb": 1,
+    "recommendedRamGb": 2,
+    "releaseDate": "2025-03",
+    "ollamaTag": "gemma3:1b",
+    "tips": [
+      "Great for quick prototyping with multimodal (vision) capabilities",
+      "Runs on any Mac \u2014 even base model MacBook Air with 8 GB",
+      "Ideal for edge/embedded use cases where you need minimal memory footprint"
+    ]
+  },
+  {
+    "name": "Llama 3.2 3B",
+    "slug": "llama3.2-3b",
+    "provider": "Meta",
+    "description": "Meta's compact 3B model. Good balance of quality and speed for everyday tasks.",
+    "parameters": "3B",
+    "parametersBn": 3,
+    "architecture": "dense",
+    "contextWindow": "128K",
+    "contextTokens": 131072,
+    "license": "Llama 3.2",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "code",
+      "multilingual",
+      "tool-use"
+    ],
+    "quantizations": [
+      {
+        "format": "Q3_K_M",
+        "bits": 3,
+        "vram": "1.7 GB",
+        "vramGb": 1.7,
+        "quality": "Moderate"
+      },
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "2.0 GB",
+        "vramGb": 2,
+        "quality": "Good"
+      },
+      {
+        "format": "Q5_K_M",
+        "bits": 5,
+        "vram": "2.4 GB",
+        "vramGb": 2.4,
+        "quality": "Good"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "3.4 GB",
+        "vramGb": 3.4,
+        "quality": "Excellent"
+      },
+      {
+        "format": "F16",
+        "bits": 16,
+        "vram": "6.4 GB",
+        "vramGb": 6.4,
+        "quality": "Lossless"
+      }
+    ],
+    "minRamGb": 2,
+    "recommendedRamGb": 4,
+    "releaseDate": "2024-09",
+    "ollamaTag": "llama3.2:3b",
+    "tips": [
+      "Fits comfortably on 8 GB Macs at Q4_K_M \u2014 leaves room for your dev tools",
+      "128K context window is massive for a 3B model \u2014 great for long documents",
+      "Use this as your daily driver if you need fast responses and low overhead"
+    ]
+  },
+  {
+    "name": "Phi-4 Mini 3.8B",
+    "slug": "phi4-mini-3.8b",
+    "provider": "Microsoft",
+    "description": "Microsoft's reasoning-focused small model. Punches well above its weight on logic tasks.",
+    "parameters": "3.8B",
+    "parametersBn": 3.8,
+    "architecture": "dense",
+    "contextWindow": "128K",
+    "contextTokens": 131072,
+    "license": "MIT",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "reasoning",
+      "code"
+    ],
+    "quantizations": [
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "2.5 GB",
+        "vramGb": 2.5,
+        "quality": "Good"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "4.2 GB",
+        "vramGb": 4.2,
+        "quality": "Excellent"
+      },
+      {
+        "format": "F16",
+        "bits": 16,
+        "vram": "7.8 GB",
+        "vramGb": 7.8,
+        "quality": "Lossless"
+      }
+    ],
+    "minRamGb": 3,
+    "recommendedRamGb": 5,
+    "releaseDate": "2025-01",
+    "ollamaTag": "phi4-mini",
+    "tips": [
+      "MIT licensed \u2014 use freely in commercial projects with no restrictions",
+      "Great for chain-of-thought reasoning at very low memory cost",
+      "On 8 GB Macs, use Q4_K_M to leave room for VS Code and a browser"
+    ]
+  },
+  {
+    "name": "Gemma 3 4B",
+    "slug": "gemma3-4b",
+    "provider": "Google",
+    "description": "Google's 4B Gemma with vision support. Strong multilingual performance for its size.",
+    "parameters": "4B",
+    "parametersBn": 4,
+    "architecture": "dense",
+    "contextWindow": "128K",
+    "contextTokens": 131072,
+    "license": "Gemma",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "vision",
+      "multilingual",
+      "code"
+    ],
+    "quantizations": [
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "3.0 GB",
+        "vramGb": 3,
+        "quality": "Good"
+      },
+      {
+        "format": "Q6_K",
+        "bits": 6,
+        "vram": "3.8 GB",
+        "vramGb": 3.8,
+        "quality": "Excellent"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "4.9 GB",
+        "vramGb": 4.9,
+        "quality": "Excellent"
+      },
+      {
+        "format": "F16",
+        "bits": 16,
+        "vram": "8.9 GB",
+        "vramGb": 8.9,
+        "quality": "Lossless"
+      }
+    ],
+    "minRamGb": 3,
+    "recommendedRamGb": 5,
+    "releaseDate": "2025-03",
+    "ollamaTag": "gemma3:4b",
+    "tips": [
+      "Best small model for vision tasks \u2014 analyze screenshots, diagrams, and UI mockups",
+      "128K context makes it useful for RAG and long document analysis",
+      "Runs smoothly on 8 GB Macs at Q4_K_M alongside normal dev tools"
+    ]
+  },
+  {
+    "name": "Llama 3.1 8B",
+    "slug": "llama3.1-8b",
+    "provider": "Meta",
+    "description": "Meta's versatile 8B \u2014 great quality/speed ratio. The most popular open model size for a reason.",
+    "parameters": "8B",
+    "parametersBn": 8,
+    "architecture": "dense",
+    "contextWindow": "128K",
+    "contextTokens": 131072,
+    "license": "Llama 3.1 Community",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "code",
+      "reasoning",
+      "tool-use"
+    ],
+    "quantizations": [
+      {
+        "format": "Q2_K",
+        "bits": 2,
+        "vram": "3.1 GB",
+        "vramGb": 3.1,
+        "quality": "Low"
+      },
+      {
+        "format": "Q3_K_M",
+        "bits": 3,
+        "vram": "4.1 GB",
+        "vramGb": 4.1,
+        "quality": "Moderate"
+      },
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "4.6 GB",
+        "vramGb": 4.6,
+        "quality": "Good"
+      },
+      {
+        "format": "Q5_K_M",
+        "bits": 5,
+        "vram": "5.6 GB",
+        "vramGb": 5.6,
+        "quality": "Good"
+      },
+      {
+        "format": "Q6_K",
+        "bits": 6,
+        "vram": "6.6 GB",
+        "vramGb": 6.6,
+        "quality": "Excellent"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "8.7 GB",
+        "vramGb": 8.7,
+        "quality": "Excellent"
+      },
+      {
+        "format": "F16",
+        "bits": 16,
+        "vram": "16.9 GB",
+        "vramGb": 16.9,
+        "quality": "Lossless"
+      }
+    ],
+    "minRamGb": 4.5,
+    "recommendedRamGb": 7.5,
+    "releaseDate": "2024-07",
+    "ollamaTag": "llama3.1:8b",
+    "tips": [
+      "Q4_K_M at 4.6 GB is the sweet spot \u2014 fits on 8 GB Macs with room to spare",
+      "Close Chrome tabs before loading Q8_0 on 16 GB machines",
+      "Use DevPulse to check available memory before loading \u2014 it factors in your running apps",
+      "Great for code generation, general chat, and tool-use tasks"
+    ]
+  },
+  {
+    "name": "Qwen 3.5 9B",
+    "slug": "qwen3.5-9b",
+    "provider": "Alibaba",
+    "description": "Alibaba's latest 9B model with strong reasoning and multilingual support.",
+    "parameters": "9B",
+    "parametersBn": 9,
+    "architecture": "dense",
+    "contextWindow": "128K",
+    "contextTokens": 131072,
+    "license": "Apache 2.0",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "code",
+      "reasoning",
+      "multilingual"
+    ],
+    "quantizations": [
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "5.5 GB",
+        "vramGb": 5.5,
+        "quality": "Good"
+      },
+      {
+        "format": "Q6_K",
+        "bits": 6,
+        "vram": "7.5 GB",
+        "vramGb": 7.5,
+        "quality": "Excellent"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "9.8 GB",
+        "vramGb": 9.8,
+        "quality": "Excellent"
+      },
+      {
+        "format": "F16",
+        "bits": 16,
+        "vram": "18.5 GB",
+        "vramGb": 18.5,
+        "quality": "Lossless"
+      }
+    ],
+    "minRamGb": 5,
+    "recommendedRamGb": 8,
+    "releaseDate": "2025-03",
+    "ollamaTag": "qwen3.5:9b",
+    "tips": [
+      "Apache 2.0 licensed \u2014 fully open for commercial use",
+      "Q4_K_M fits comfortably on 16 GB Macs with normal dev workloads",
+      "Excellent for multilingual tasks \u2014 strong Chinese, Japanese, Korean support"
+    ]
+  },
+  {
+    "name": "Phi-4 14B",
+    "slug": "phi4-14b",
+    "provider": "Microsoft",
+    "description": "Microsoft's flagship reasoning model. Exceptional quality for a 14B model, especially on STEM tasks.",
+    "parameters": "14B",
+    "parametersBn": 14,
+    "architecture": "dense",
+    "contextWindow": "16K",
+    "contextTokens": 16384,
+    "license": "MIT",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "code",
+      "reasoning"
+    ],
+    "quantizations": [
+      {
+        "format": "Q3_K_M",
+        "bits": 3,
+        "vram": "7.0 GB",
+        "vramGb": 7,
+        "quality": "Moderate"
+      },
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "8.7 GB",
+        "vramGb": 8.7,
+        "quality": "Good"
+      },
+      {
+        "format": "Q5_K_M",
+        "bits": 5,
+        "vram": "10.4 GB",
+        "vramGb": 10.4,
+        "quality": "Good"
+      },
+      {
+        "format": "Q6_K",
+        "bits": 6,
+        "vram": "11.6 GB",
+        "vramGb": 11.6,
+        "quality": "Excellent"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "15.0 GB",
+        "vramGb": 15,
+        "quality": "Excellent"
+      },
+      {
+        "format": "F16",
+        "bits": 16,
+        "vram": "28.6 GB",
+        "vramGb": 28.6,
+        "quality": "Lossless"
+      }
+    ],
+    "minRamGb": 8,
+    "recommendedRamGb": 12,
+    "releaseDate": "2025-01",
+    "ollamaTag": "phi4",
+    "tips": [
+      "Q4_K_M at 8.7 GB needs a 16 GB Mac \u2014 close heavy apps first",
+      "MIT license makes this ideal for commercial code generation",
+      "Use DevPulse to free up memory before loading \u2014 Docker alone might free 4 GB",
+      "Shorter 16K context \u2014 best for focused tasks, not long documents"
+    ]
+  },
+  {
+    "name": "Mistral Small 3.1 24B",
+    "slug": "mistral-small-3.1-24b",
+    "provider": "Mistral AI",
+    "description": "Mistral's latest small model with vision. Strong instruction following and function calling.",
+    "parameters": "24B",
+    "parametersBn": 24,
+    "architecture": "dense",
+    "contextWindow": "128K",
+    "contextTokens": 131072,
+    "license": "Apache 2.0",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "code",
+      "vision",
+      "tool-use"
+    ],
+    "quantizations": [
+      {
+        "format": "Q3_K_M",
+        "bits": 3,
+        "vram": "11.8 GB",
+        "vramGb": 11.8,
+        "quality": "Moderate"
+      },
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "14.4 GB",
+        "vramGb": 14.4,
+        "quality": "Good"
+      },
+      {
+        "format": "Q5_K_M",
+        "bits": 5,
+        "vram": "17.0 GB",
+        "vramGb": 17,
+        "quality": "Good"
+      },
+      {
+        "format": "Q6_K",
+        "bits": 6,
+        "vram": "19.6 GB",
+        "vramGb": 19.6,
+        "quality": "Excellent"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "25.4 GB",
+        "vramGb": 25.4,
+        "quality": "Excellent"
+      },
+      {
+        "format": "F16",
+        "bits": 16,
+        "vram": "48.6 GB",
+        "vramGb": 48.6,
+        "quality": "Lossless"
+      }
+    ],
+    "minRamGb": 12,
+    "recommendedRamGb": 18,
+    "releaseDate": "2025-03",
+    "ollamaTag": "mistral-small3.1",
+    "tips": [
+      "Q4_K_M needs 14.4 GB \u2014 works on 24 GB Macs after closing heavy apps",
+      "Use DevPulse to audit your running apps before loading this model",
+      "Vision support means you can analyze screenshots and diagrams locally",
+      "Apache 2.0 \u2014 fully open for commercial use"
+    ]
+  },
+  {
+    "name": "Gemma 3 27B",
+    "slug": "gemma3-27b",
+    "provider": "Google",
+    "description": "Google's most capable open model. Excellent all-around performance with vision and multilingual support.",
+    "parameters": "27B",
+    "parametersBn": 27,
+    "architecture": "dense",
+    "contextWindow": "128K",
+    "contextTokens": 131072,
+    "license": "Gemma",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "code",
+      "reasoning",
+      "vision",
+      "multilingual"
+    ],
+    "quantizations": [
+      {
+        "format": "Q3_K_M",
+        "bits": 3,
+        "vram": "13.5 GB",
+        "vramGb": 13.5,
+        "quality": "Moderate"
+      },
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "16.5 GB",
+        "vramGb": 16.5,
+        "quality": "Good"
+      },
+      {
+        "format": "Q5_K_M",
+        "bits": 5,
+        "vram": "19.5 GB",
+        "vramGb": 19.5,
+        "quality": "Good"
+      },
+      {
+        "format": "Q6_K",
+        "bits": 6,
+        "vram": "22.5 GB",
+        "vramGb": 22.5,
+        "quality": "Excellent"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "29.0 GB",
+        "vramGb": 29,
+        "quality": "Excellent"
+      },
+      {
+        "format": "F16",
+        "bits": 16,
+        "vram": "55.8 GB",
+        "vramGb": 55.8,
+        "quality": "Lossless"
+      }
+    ],
+    "minRamGb": 14,
+    "recommendedRamGb": 20,
+    "releaseDate": "2025-03",
+    "ollamaTag": "gemma3:27b",
+    "tips": [
+      "Q4_K_M at 16.5 GB is ideal for 32 GB Macs \u2014 leaves room for your dev stack",
+      "On 24 GB Macs, use Q3_K_M and close Docker/Chrome before loading",
+      "Best open model for vision tasks at this size \u2014 analyze UIs, docs, charts",
+      "Use DevPulse to monitor memory pressure while the model is loaded"
+    ]
+  },
+  {
+    "name": "Qwen 2.5 Coder 32B",
+    "slug": "qwen2.5-coder-32b",
+    "provider": "Alibaba",
+    "description": "Purpose-built for code generation. One of the best open coding models available \u2014 rivals GPT-4 on many benchmarks.",
+    "parameters": "32B",
+    "parametersBn": 32,
+    "architecture": "dense",
+    "contextWindow": "128K",
+    "contextTokens": 131072,
+    "license": "Apache 2.0",
+    "commercial": true,
+    "capabilities": [
+      "code",
+      "chat",
+      "reasoning"
+    ],
+    "quantizations": [
+      {
+        "format": "Q3_K_M",
+        "bits": 3,
+        "vram": "15.5 GB",
+        "vramGb": 15.5,
+        "quality": "Moderate"
+      },
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "19.0 GB",
+        "vramGb": 19,
+        "quality": "Good"
+      },
+      {
+        "format": "Q5_K_M",
+        "bits": 5,
+        "vram": "22.5 GB",
+        "vramGb": 22.5,
+        "quality": "Good"
+      },
+      {
+        "format": "Q6_K",
+        "bits": 6,
+        "vram": "26.0 GB",
+        "vramGb": 26,
+        "quality": "Excellent"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "34.0 GB",
+        "vramGb": 34,
+        "quality": "Excellent"
+      },
+      {
+        "format": "F16",
+        "bits": 16,
+        "vram": "65.0 GB",
+        "vramGb": 65,
+        "quality": "Lossless"
+      }
+    ],
+    "minRamGb": 16,
+    "recommendedRamGb": 24,
+    "releaseDate": "2024-11",
+    "ollamaTag": "qwen2.5-coder:32b",
+    "tips": [
+      "Q4_K_M at 19 GB needs a 32 GB Mac \u2014 use DevPulse to free memory first",
+      "Close Docker Desktop (saves 4\u20138 GB), Chrome (saves 5\u201315 GB), and Slack before loading",
+      "Apache 2.0 licensed \u2014 use the generated code commercially without restriction",
+      "Best local model for coding tasks \u2014 great for offline copilot workflows"
+    ]
+  },
+  {
+    "name": "Qwen 3 4B",
+    "slug": "qwen3-4b",
+    "provider": "Alibaba",
+    "description": "Compact dense model from the Qwen 3 family with thinking-mode support. Runs comfortably on 8 GB Macs.",
+    "parameters": "4B",
+    "parametersBn": 4,
+    "architecture": "dense",
+    "contextWindow": "128K",
+    "contextTokens": 131072,
+    "license": "Apache 2.0",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "code",
+      "reasoning",
+      "multilingual",
+      "tool-use"
+    ],
+    "quantizations": [
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "3.0 GB",
+        "vramGb": 3.0,
+        "quality": "Good"
+      },
+      {
+        "format": "Q5_K_M",
+        "bits": 5,
+        "vram": "3.5 GB",
+        "vramGb": 3.5,
+        "quality": "Good"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "5.0 GB",
+        "vramGb": 5.0,
+        "quality": "Excellent"
+      },
+      {
+        "format": "F16",
+        "bits": 16,
+        "vram": "8.5 GB",
+        "vramGb": 8.5,
+        "quality": "Lossless"
+      }
+    ],
+    "minRamGb": 8,
+    "recommendedRamGb": 16,
+    "releaseDate": "2025-04",
+    "ollamaTag": "qwen3:4b",
+    "tips": [
+      "Smallest Qwen 3 \u2014 great for laptops and battery-conscious workflows",
+      "Apache 2.0 \u2014 use commercially without restriction",
+      "Strong multilingual coverage despite compact size"
+    ]
+  },
+  {
+    "name": "Qwen 3 8B",
+    "slug": "qwen3-8b",
+    "provider": "Alibaba",
+    "description": "Mid-tier dense model with thinking-mode support. Strong general-purpose pick for 16 GB Macs.",
+    "parameters": "8B",
+    "parametersBn": 8,
+    "architecture": "dense",
+    "contextWindow": "128K",
+    "contextTokens": 131072,
+    "license": "Apache 2.0",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "code",
+      "reasoning",
+      "multilingual",
+      "tool-use"
+    ],
+    "quantizations": [
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "5.5 GB",
+        "vramGb": 5.5,
+        "quality": "Good"
+      },
+      {
+        "format": "Q5_K_M",
+        "bits": 5,
+        "vram": "6.5 GB",
+        "vramGb": 6.5,
+        "quality": "Good"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "9.5 GB",
+        "vramGb": 9.5,
+        "quality": "Excellent"
+      },
+      {
+        "format": "F16",
+        "bits": 16,
+        "vram": "17.0 GB",
+        "vramGb": 17.0,
+        "quality": "Lossless"
+      }
+    ],
+    "minRamGb": 16,
+    "recommendedRamGb": 24,
+    "releaseDate": "2025-04",
+    "ollamaTag": "qwen3:8b",
+    "tips": [
+      "Sweet-spot Qwen 3 size \u2014 Q4_K_M fits alongside Chrome and an IDE on 16 GB",
+      "Toggle thinking mode for harder reasoning tasks",
+      "Apache 2.0 license \u2014 production-ready"
+    ]
+  },
+  {
+    "name": "Qwen 3 14B",
+    "slug": "qwen3-14b",
+    "provider": "Alibaba",
+    "description": "Larger dense Qwen 3 with stronger reasoning. Good fit for 24 GB+ Macs.",
+    "parameters": "14B",
+    "parametersBn": 14,
+    "architecture": "dense",
+    "contextWindow": "128K",
+    "contextTokens": 131072,
+    "license": "Apache 2.0",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "code",
+      "reasoning",
+      "multilingual",
+      "tool-use"
+    ],
+    "quantizations": [
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "9.5 GB",
+        "vramGb": 9.5,
+        "quality": "Good"
+      },
+      {
+        "format": "Q5_K_M",
+        "bits": 5,
+        "vram": "11.0 GB",
+        "vramGb": 11.0,
+        "quality": "Good"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "16.0 GB",
+        "vramGb": 16.0,
+        "quality": "Excellent"
+      },
+      {
+        "format": "F16",
+        "bits": 16,
+        "vram": "29.0 GB",
+        "vramGb": 29.0,
+        "quality": "Lossless"
+      }
+    ],
+    "minRamGb": 16,
+    "recommendedRamGb": 24,
+    "releaseDate": "2025-04",
+    "ollamaTag": "qwen3:14b",
+    "tips": [
+      "Q4_K_M fits comfortably on 24 GB Macs after closing Chrome",
+      "Reasonable middle ground between Qwen 3 8B and 32B",
+      "Tool-use ready \u2014 pairs well with agent frameworks"
+    ]
+  },
+  {
+    "name": "Qwen 3 32B",
+    "slug": "qwen3-32b",
+    "provider": "Alibaba",
+    "description": "Alibaba's general-purpose 32B with strong reasoning. Supports both thinking and non-thinking modes.",
+    "parameters": "32B",
+    "parametersBn": 32,
+    "architecture": "dense",
+    "contextWindow": "128K",
+    "contextTokens": 131072,
+    "license": "Apache 2.0",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "code",
+      "reasoning",
+      "multilingual",
+      "tool-use"
+    ],
+    "quantizations": [
+      {
+        "format": "Q3_K_M",
+        "bits": 3,
+        "vram": "15.5 GB",
+        "vramGb": 15.5,
+        "quality": "Moderate"
+      },
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "19.0 GB",
+        "vramGb": 19,
+        "quality": "Good"
+      },
+      {
+        "format": "Q5_K_M",
+        "bits": 5,
+        "vram": "22.5 GB",
+        "vramGb": 22.5,
+        "quality": "Good"
+      },
+      {
+        "format": "Q6_K",
+        "bits": 6,
+        "vram": "26.0 GB",
+        "vramGb": 26,
+        "quality": "Excellent"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "34.0 GB",
+        "vramGb": 34,
+        "quality": "Excellent"
+      },
+      {
+        "format": "F16",
+        "bits": 16,
+        "vram": "65.0 GB",
+        "vramGb": 65,
+        "quality": "Lossless"
+      }
+    ],
+    "minRamGb": 16,
+    "recommendedRamGb": 24,
+    "releaseDate": "2025-04",
+    "ollamaTag": "qwen3:32b",
+    "tips": [
+      "Thinking mode uses more memory at runtime \u2014 monitor with DevPulse",
+      "Q4_K_M fits on 32 GB Macs after clearing heavy apps",
+      "Great for agent workflows with tool-use support",
+      "Use DevPulse's 'Can I Run?' to check if you have headroom right now"
+    ]
+  },
+  {
+    "name": "Qwen 3 30B-A3B (MoE)",
+    "slug": "qwen3-30b-a3b",
+    "provider": "Alibaba",
+    "description": "Mixture-of-experts model: 30B total parameters, ~3B active per token. Trades VRAM for compute efficiency.",
+    "parameters": "30B",
+    "parametersBn": 30,
+    "activeParameters": "3B",
+    "architecture": "moe",
+    "contextWindow": "128K",
+    "contextTokens": 131072,
+    "license": "Apache 2.0",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "code",
+      "reasoning",
+      "multilingual",
+      "tool-use"
+    ],
+    "quantizations": [
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "19.0 GB",
+        "vramGb": 19.0,
+        "quality": "Good"
+      },
+      {
+        "format": "Q5_K_M",
+        "bits": 5,
+        "vram": "22.0 GB",
+        "vramGb": 22.0,
+        "quality": "Good"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "33.0 GB",
+        "vramGb": 33.0,
+        "quality": "Excellent"
+      }
+    ],
+    "minRamGb": 32,
+    "recommendedRamGb": 48,
+    "releaseDate": "2025-04",
+    "ollamaTag": "qwen3:30b-a3b",
+    "tips": [
+      "MoE: VRAM holds all 30B but only 3B active per token \u2014 much faster than dense 30B",
+      "Q4_K_M fits on 32 GB Macs with most apps closed",
+      "Great quality-per-token-speed ratio for laptop inference"
+    ]
+  },
+  {
+    "name": "DeepSeek R1 Distill 32B",
+    "slug": "deepseek-r1-distill-32b",
+    "provider": "DeepSeek",
+    "description": "Distilled version of DeepSeek R1's reasoning capabilities into a 32B dense model. Outstanding reasoning at this size.",
+    "parameters": "32B",
+    "parametersBn": 32,
+    "architecture": "dense",
+    "contextWindow": "128K",
+    "contextTokens": 131072,
+    "license": "MIT",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "reasoning",
+      "code"
+    ],
+    "quantizations": [
+      {
+        "format": "Q3_K_M",
+        "bits": 3,
+        "vram": "15.5 GB",
+        "vramGb": 15.5,
+        "quality": "Moderate"
+      },
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "19.0 GB",
+        "vramGb": 19,
+        "quality": "Good"
+      },
+      {
+        "format": "Q5_K_M",
+        "bits": 5,
+        "vram": "22.5 GB",
+        "vramGb": 22.5,
+        "quality": "Good"
+      },
+      {
+        "format": "Q6_K",
+        "bits": 6,
+        "vram": "26.0 GB",
+        "vramGb": 26,
+        "quality": "Excellent"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "34.0 GB",
+        "vramGb": 34,
+        "quality": "Excellent"
+      },
+      {
+        "format": "F16",
+        "bits": 16,
+        "vram": "65.0 GB",
+        "vramGb": 65,
+        "quality": "Lossless"
+      }
+    ],
+    "minRamGb": 16,
+    "recommendedRamGb": 24,
+    "releaseDate": "2025-01",
+    "ollamaTag": "deepseek-r1:32b",
+    "tips": [
+      "MIT license \u2014 the most permissive option for a reasoning-focused 32B model",
+      "Chain-of-thought reasoning generates long outputs \u2014 watch memory during generation",
+      "On 32 GB Macs, use Q4_K_M and let DevPulse tell you what to close first",
+      "Best reasoning model you can run locally without a 64 GB machine"
+    ]
+  },
+  {
+    "name": "Llama 3.3 70B",
+    "slug": "llama3.3-70b",
+    "provider": "Meta",
+    "description": "Meta's flagship open model. Near GPT-4 quality on many benchmarks. The gold standard of local AI.",
+    "parameters": "70B",
+    "parametersBn": 70,
+    "architecture": "dense",
+    "contextWindow": "128K",
+    "contextTokens": 131072,
+    "license": "Llama 3.3 Community",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "code",
+      "reasoning",
+      "multilingual",
+      "tool-use"
+    ],
+    "quantizations": [
+      {
+        "format": "Q2_K",
+        "bits": 2,
+        "vram": "26.4 GB",
+        "vramGb": 26.4,
+        "quality": "Low"
+      },
+      {
+        "format": "Q3_K_M",
+        "bits": 3,
+        "vram": "33.4 GB",
+        "vramGb": 33.4,
+        "quality": "Moderate"
+      },
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "40.6 GB",
+        "vramGb": 40.6,
+        "quality": "Good"
+      },
+      {
+        "format": "Q5_K_M",
+        "bits": 5,
+        "vram": "47.8 GB",
+        "vramGb": 47.8,
+        "quality": "Good"
+      },
+      {
+        "format": "Q6_K",
+        "bits": 6,
+        "vram": "55.0 GB",
+        "vramGb": 55,
+        "quality": "Excellent"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "72.0 GB",
+        "vramGb": 72,
+        "quality": "Excellent"
+      }
+    ],
+    "minRamGb": 28,
+    "recommendedRamGb": 48,
+    "releaseDate": "2024-12",
+    "ollamaTag": "llama3.3",
+    "tips": [
+      "Q4_K_M needs ~41 GB \u2014 requires a 64 GB Mac with apps closed",
+      "Q2_K at 26 GB fits on 36 GB Macs but quality drops noticeably",
+      "Use DevPulse to aggressively free memory before loading: close Chrome, Docker, Slack",
+      "On 64 GB Macs, Q4_K_M is the sweet spot \u2014 run with DevPulse monitoring memory pressure",
+      "On 96 GB+ Macs, go Q6_K or Q8_0 for near-lossless quality"
+    ]
+  },
+  {
+    "name": "Llama 4 Scout 17B",
+    "slug": "llama4-scout-17b",
+    "provider": "Meta",
+    "description": "Meta's first MoE model. 109B total parameters but only 17B active \u2014 gives you big-model quality at medium-model memory cost.",
+    "parameters": "109B",
+    "parametersBn": 109,
+    "activeParameters": "17B",
+    "architecture": "moe",
+    "contextWindow": "512K",
+    "contextTokens": 524288,
+    "license": "Llama 4 Community",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "code",
+      "reasoning",
+      "vision",
+      "multilingual",
+      "tool-use"
+    ],
+    "quantizations": [
+      {
+        "format": "Q3_K_M",
+        "bits": 3,
+        "vram": "46 GB",
+        "vramGb": 46,
+        "quality": "Moderate"
+      },
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "58 GB",
+        "vramGb": 58,
+        "quality": "Good"
+      },
+      {
+        "format": "Q5_K_M",
+        "bits": 5,
+        "vram": "70 GB",
+        "vramGb": 70,
+        "quality": "Good"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "110 GB",
+        "vramGb": 110,
+        "quality": "Excellent"
+      }
+    ],
+    "minRamGb": 48,
+    "recommendedRamGb": 64,
+    "releaseDate": "2025-04",
+    "ollamaTag": "llama4-scout",
+    "tips": [
+      "MoE architecture means only 17B params are active per token \u2014 fast inference despite 109B total",
+      "Q3_K_M at 46 GB is the minimum viable option on 64 GB Macs \u2014 close everything",
+      "512K context window is enormous \u2014 but longer contexts use more RAM at runtime",
+      "On 96+ GB Macs, use Q4_K_M for the best quality/memory tradeoff"
+    ]
+  },
+  {
+    "name": "DeepSeek R1",
+    "slug": "deepseek-r1",
+    "provider": "DeepSeek",
+    "description": "Full DeepSeek R1 with 671B parameters (37B active). State-of-the-art reasoning that rivals the best closed models.",
+    "parameters": "671B",
+    "parametersBn": 671,
+    "activeParameters": "37B",
+    "architecture": "moe",
+    "contextWindow": "128K",
+    "contextTokens": 131072,
+    "license": "MIT",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "code",
+      "reasoning"
+    ],
+    "quantizations": [
+      {
+        "format": "Q2_K",
+        "bits": 2,
+        "vram": "183 GB",
+        "vramGb": 183,
+        "quality": "Low"
+      },
+      {
+        "format": "Q3_K_M",
+        "bits": 3,
+        "vram": "272 GB",
+        "vramGb": 272,
+        "quality": "Moderate"
+      },
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "362 GB",
+        "vramGb": 362,
+        "quality": "Good"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "671 GB",
+        "vramGb": 671,
+        "quality": "Excellent"
+      }
+    ],
+    "minRamGb": 183,
+    "recommendedRamGb": 384,
+    "releaseDate": "2025-01",
+    "ollamaTag": "deepseek-r1:671b",
+    "tips": [
+      "Requires specialized hardware \u2014 no consumer Mac can run the full model",
+      "Use the 32B distilled version (deepseek-r1-distill-32b) instead for local development",
+      "Even Q2_K needs 183 GB \u2014 this is server/cluster territory",
+      "Consider the distilled 7B or 14B variants for testing reasoning on consumer hardware"
+    ]
+  },
+  {
+    "name": "DeepSeek V3.2",
+    "slug": "deepseek-v3.2",
+    "provider": "DeepSeek",
+    "description": "DeepSeek's latest general-purpose MoE model. 685B total with 37B active parameters.",
+    "parameters": "685B",
+    "parametersBn": 685,
+    "activeParameters": "37B",
+    "architecture": "moe",
+    "contextWindow": "128K",
+    "contextTokens": 131072,
+    "license": "MIT",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "code",
+      "reasoning",
+      "multilingual"
+    ],
+    "quantizations": [
+      {
+        "format": "Q2_K",
+        "bits": 2,
+        "vram": "187 GB",
+        "vramGb": 187,
+        "quality": "Low"
+      },
+      {
+        "format": "Q3_K_M",
+        "bits": 3,
+        "vram": "278 GB",
+        "vramGb": 278,
+        "quality": "Moderate"
+      },
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "370 GB",
+        "vramGb": 370,
+        "quality": "Good"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "685 GB",
+        "vramGb": 685,
+        "quality": "Excellent"
+      }
+    ],
+    "minRamGb": 187,
+    "recommendedRamGb": 384,
+    "releaseDate": "2025-06",
+    "ollamaTag": "deepseek-v3:685b",
+    "tips": [
+      "Server-class model \u2014 not runnable on any consumer Mac",
+      "Use DeepSeek R1 Distill 32B or smaller models for local development",
+      "MIT licensed \u2014 commercially viable for server deployments"
+    ]
+  },
+  {
+    "name": "Kimi K2",
+    "slug": "kimi-k2",
+    "provider": "Moonshot AI",
+    "description": "Moonshot's flagship open-weight MoE. 1T total parameters with ~32B active per token. Strong on agentic reasoning and long-context coding.",
+    "parameters": "1T",
+    "parametersBn": 1000,
+    "activeParameters": "32B",
+    "architecture": "moe",
+    "contextWindow": "128K",
+    "contextTokens": 131072,
+    "license": "Modified MIT",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "code",
+      "reasoning",
+      "tool-use",
+      "multilingual"
+    ],
+    "quantizations": [
+      {
+        "format": "Q2_K",
+        "bits": 2,
+        "vram": "280 GB",
+        "vramGb": 280,
+        "quality": "Low"
+      },
+      {
+        "format": "Q3_K_M",
+        "bits": 3,
+        "vram": "420 GB",
+        "vramGb": 420,
+        "quality": "Moderate"
+      },
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "560 GB",
+        "vramGb": 560,
+        "quality": "Good"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "1024 GB",
+        "vramGb": 1024,
+        "quality": "Excellent"
+      }
+    ],
+    "minRamGb": 280,
+    "recommendedRamGb": 512,
+    "releaseDate": "2025-07",
+    "tips": [
+      "Server-class. No consumer Mac \u2014 including 192 GB Studio \u2014 fits any quant",
+      "Use Unsloth's IQ1_S/IQ2_XXS GGUF if you must \u2014 even those need 200+ GB",
+      "For local Moonshot work, use Kimi VL A3B Thinking (also in this list)",
+      "Modified MIT: commercially viable below 100M MAU; check the license terms"
+    ]
+  },
+  {
+    "name": "Kimi VL A3B Thinking",
+    "slug": "kimi-vl-a3b-thinking",
+    "provider": "Moonshot AI",
+    "description": "Compact MoE with vision and reasoning. ~16B total parameters with ~2.8B active \u2014 fits comfortably on most Macs while preserving Moonshot's reasoning style.",
+    "parameters": "16B",
+    "parametersBn": 16,
+    "activeParameters": "2.8B",
+    "architecture": "moe",
+    "contextWindow": "128K",
+    "contextTokens": 131072,
+    "license": "MIT",
+    "commercial": true,
+    "capabilities": [
+      "chat",
+      "code",
+      "reasoning",
+      "vision",
+      "multilingual"
+    ],
+    "quantizations": [
+      {
+        "format": "Q4_K_M",
+        "bits": 4,
+        "vram": "9.5 GB",
+        "vramGb": 9.5,
+        "quality": "Good"
+      },
+      {
+        "format": "Q5_K_M",
+        "bits": 5,
+        "vram": "11.5 GB",
+        "vramGb": 11.5,
+        "quality": "Excellent"
+      },
+      {
+        "format": "Q8_0",
+        "bits": 8,
+        "vram": "17 GB",
+        "vramGb": 17,
+        "quality": "Excellent"
+      },
+      {
+        "format": "F16",
+        "bits": 16,
+        "vram": "32 GB",
+        "vramGb": 32,
+        "quality": "Lossless"
+      }
+    ],
+    "minRamGb": 12,
+    "recommendedRamGb": 24,
+    "releaseDate": "2025-04",
+    "tips": [
+      "Active params are tiny (2.8B) so inference is fast even on 16 GB Macs",
+      "Vision support \u2014 feed screenshots, diagrams, code snippets directly",
+      "Reasoning mode produces longer outputs \u2014 bump context budget accordingly",
+      "Easiest path: download the GGUF from Hugging Face and run via llama.cpp"
+    ]
+  }
+]

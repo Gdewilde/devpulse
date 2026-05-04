@@ -367,11 +367,22 @@ enum CLI {
                 out["ollama"] = [
                     "running": s.isRunning,
                     "totalVRAMMB": s.totalVRAMMB,
+                    "installedDiskMB": s.installedDiskMB,
+                    "staleDiskMB": s.staleDiskMB,
                     "models": s.loadedModels.map { m in
                         [
                             "name": m.name,
                             "sizeMB": m.sizeMB,
                             "isIdle": m.isIdle,
+                        ]
+                    },
+                    "installed": s.installedModels.map { m in
+                        [
+                            "name": m.name,
+                            "sizeMB": m.sizeMB,
+                            "quantization": m.quantization,
+                            "parameterSize": m.parameterSize,
+                            "daysSinceModified": m.daysSinceModified,
                         ]
                     },
                 ]
@@ -381,10 +392,14 @@ enum CLI {
         }
 
         if let s = status, s.isRunning {
-            print("ollama: \(s.loadedModels.count) models, \(s.totalVRAMFormatted) VRAM")
+            print("ollama: \(s.loadedModels.count) loaded (\(s.totalVRAMFormatted) VRAM), \(s.installedModels.count) installed (\(s.installedDiskFormatted) disk)")
             for m in s.loadedModels {
                 let idleMark = m.isIdle ? " (idle)" : ""
-                print("  \(m.name)  \(m.sizeFormatted)\(idleMark)")
+                print("  loaded   \(m.name)  \(m.sizeFormatted)\(idleMark)")
+            }
+            for m in s.unloadedInstalledModels {
+                let staleMark = m.daysSinceModified >= 30 ? " (\(m.daysSinceModified)d old)" : ""
+                print("  on-disk  \(m.name)  \(m.sizeFormatted)\(staleMark)")
             }
             print("")
         } else {
