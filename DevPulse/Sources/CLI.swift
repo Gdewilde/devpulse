@@ -14,7 +14,7 @@ enum CLI {
     /// Recognized subcommand strings. If the first arg matches, run as CLI.
     static let subcommands: Set<String> = [
         "status", "processes", "zombies", "ports", "ai", "clean", "watch",
-        "babysit",
+        "babysit", "route",
         "help", "--help", "-h", "version", "--version",
     ]
 
@@ -50,6 +50,7 @@ enum CLI {
         case "clean":             return runClean(flags: flags, json: json)
         case "watch":             return runWatch(flags: flags)
         case "babysit":           return runBabysit(flags: flags)
+        case "route":             return runRoute(flags: flags, json: json)
         case "version", "--version":
             print(versionString())
             return 0
@@ -640,6 +641,65 @@ enum CLI {
         }
     }
 
+    // MARK: - Route (hybrid local + cloud)
+    //
+    // Single-call routing decision for hybrid AI agents. Caller passes
+    // hints (--task, --privacy-only, --max-latency-ms, --prefer); CLI
+    // returns local/cloud/either with a reason. Exit codes let agents
+    // branch in shell without parsing.
+
+    static func runRoute(flags: [String], json: Bool) -> Int32 {
+        let taskRaw = parseStringFlag(flags, name: "--task") ?? "unknown"
+        let task = RoutingPolicy.TaskClass(rawValue: taskRaw) ?? .unknown
+        let modelSizeMB = parseIntFlag(flags, name: "--model-size-mb")
+        let privacyOnly = flags.contains("--privacy-only")
+        let maxLatencyMs = parseIntFlag(flags, name: "--max-latency-ms")
+        let preferRaw = parseStringFlag(flags, name: "--prefer")
+        let prefer = preferRaw.flatMap { RoutingPolicy.Request.Preference(rawValue: $0) }
+
+        // Snapshot capacity if we have a model size to evaluate against.
+        var budget: AIMemoryBudget? = nil
+        if modelSizeMB != nil {
+            let stats = MemoryStats.current()
+            let gpu = getGPUMemoryInfo()
+            let ollama = OllamaMonitor().getStatus()
+            budget = AIMemoryBudget.calculate(stats: stats, gpu: gpu, ollama: ollama)
+        }
+
+        let request = RoutingPolicy.Request(
+            taskClass: task,
+            modelSizeMB: modelSizeMB,
+            privacyOnly: privacyOnly,
+            maxLatencyMs: maxLatencyMs,
+            prefer: prefer
+        )
+        let outcome = RoutingPolicy.decide(request, budget: budget)
+
+        if json {
+            var out: [String: Any] = [
+                "decision": outcome.decision.rawValue,
+                "reason": outcome.reason,
+                "exitCode": outcome.exitCode,
+                "task": task.rawValue,
+            ]
+            if let m = modelSizeMB { out["modelSizeMB"] = m }
+            if let b = budget {
+                out["availableForAIMB"] = b.availableForAIMB
+                out["reclaimableFromIdleMB"] = b.reclaimableFromIdleMB
+            }
+            printJSON(out)
+        } else {
+            print(outcome.decision.rawValue)
+            print("# \(outcome.reason)")
+        }
+        return outcome.exitCode
+    }
+
+    static func parseStringFlag(_ flags: [String], name: String) -> String? {
+        guard let idx = flags.firstIndex(of: name), idx + 1 < flags.count else { return nil }
+        return flags[idx + 1]
+    }
+
     /// Map a load prediction to a CLI exit code + short verdict tag.
     /// 0 = fits, 1 = won't fit, 2 = fits after unloading idle models, 3 = tight.
     static func beforeLoadVerdict(_ p: LoadPrediction) -> (code: Int32, verdict: String) {
@@ -710,6 +770,10 @@ enum CLI {
           babysit [--target-free-mb N] [--duration MIN] [--json]
                                        long-run watchdog: auto-cleans when
                                        VRAM/battery/swap cross thresholds
+          route [--task X] [--model-size-mb N] [--privacy-only]
+                [--max-latency-ms N] [--prefer cost|quality|latency]
+                                       hybrid local/cloud routing decision.
+                                       Exits 0=local, 1=cloud, 2=either, 3=can't
           version                      print version
 
         global flags:
@@ -725,6 +789,8 @@ enum CLI {
           devpulse ai --before-load 42000 --auto-clean --json
           devpulse watch --interval 30 | your-agent
           devpulse babysit --duration 660 --json > flight.log
+          devpulse route --task autocomplete --max-latency-ms 100  # → exit 0 (local)
+          devpulse route --task complex-reasoning --prefer quality # → exit 1 (cloud)
         """)
     }
 

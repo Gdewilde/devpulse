@@ -1687,6 +1687,9 @@ struct ActionSection: View {
                 .padding(.bottom, 4)
             }
 
+            // Hybrid routing posture (local-side health for a hybrid stack)
+            RoutingPostureRow(state: state)
+
             // Quick Clean with before/after
             QuickCleanRow(state: state, onAction: onAction)
 
@@ -2160,6 +2163,72 @@ struct ProfileRow: View {
         .buttonStyle(.borderless)
         .disabled(isCurrent || isSwitching)
         .onHover { isHovered = $0 }
+    }
+}
+
+// MARK: - Routing Posture Row (v1.5.0)
+//
+// Surfaces the local-side health of a hybrid AI stack in the menubar.
+// Today: local capacity verdict. Future: cloud uptime, recommended
+// next-hour routing split.
+
+struct RoutingPostureRow: View {
+    @ObservedObject var state: AppState
+
+    /// Reference model size used to grade local capacity:
+    /// 20 GB ≈ a typical 32B Q4_K_M, the median local agent target.
+    private let referenceModelMB = 20_000
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Circle()
+                .fill(verdict.color)
+                .frame(width: 8, height: 8)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Hybrid routing")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+                Text(verdict.label)
+                    .font(.system(size: 13, weight: .medium))
+            }
+
+            Spacer()
+
+            Text(verdict.suggestion)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color(NSColor.controlBackgroundColor).opacity(0.4))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, 12)
+        .padding(.bottom, 6)
+    }
+
+    private var verdict: Verdict {
+        guard let budget = state.aiMemoryBudget else {
+            return Verdict(color: .secondary, label: "Capacity unknown", suggestion: "—")
+        }
+        let prediction = budget.predictLoadImpact(modelSizeMB: referenceModelMB)
+        switch prediction {
+        case .comfortable:
+            return Verdict(color: .green, label: "Local ready", suggestion: "lean local · 70%+")
+        case .tight:
+            return Verdict(color: .orange, label: "Local tight", suggestion: "balanced · 50/50")
+        case .fitsAfterUnload:
+            return Verdict(color: .orange, label: "Cleanup needed", suggestion: "auto-clean before lean")
+        case .willNotFit:
+            return Verdict(color: .red, label: "Local at capacity", suggestion: "lean cloud · <30%")
+        }
+    }
+
+    struct Verdict {
+        let color: Color
+        let label: String
+        let suggestion: String
     }
 }
 
