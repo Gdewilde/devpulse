@@ -1,0 +1,54 @@
+VERSION
+  97e3f6956987b769 1
+DevPulse/Sources/CLI.swift
+  97e3f6956987b769 370-371,379-387,395,398-402
+DevPulse/Sources/OllamaMonitor.swift
+  97e3f6956987b769 12,30-76,121-306,327-328,332,340-341,385-403,433-495,508-542
+build.sh
+  97e3f6956987b769 49-62
+DevPulse/Sources/ModelCatalog.swift
+  97e3f6956987b769 1-87
+DevPulse/Sources/PopoverView.swift
+  97e3f6956987b769 14-21,42,44,1195-1204,1255-1302,1353,1362,1437-1634,1719-1720,1725,1728-1742,1761,1773-1774,1778-1794,1803,1806-1837,1840,1842-1871,1874,1883-1897,1899-1900,1902-1934,1937,1940-1944,1946-1947,1949,1952-1953,1955,1959,1962-1967,1970,2635-2640
+DevPulse/Sources/RAMAdvisor.swift
+  97e3f6956987b769 136-137,176-183,188,223-244
+DevPulse/Sources/DevPulseApp.swift
+  97e3f6956987b769 40,82-87,441-445,557-628
+DevPulse/Resources/models.json
+  97e3f6956987b769 1-1453
+DevPulse/Sources/AppState.swift
+  97e3f6956987b769 45-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "9fb757e3293895de4ec7007d4faa23559402dd9b",
+  "prompts": {
+    "8d0799e3d0602969": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41113d78-900a-4224-8e3b-b09b6dc874f5",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "GJ",
+      "messages": [],
+      "total_additions": 130,
+      "total_deletions": 0,
+      "accepted_lines": 4723,
+      "overriden_lines": 50
+    },
+    "97e3f6956987b769": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99211cf4-8cab-40ba-86c3-6d4ecf038ef1",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "GJ",
+      "messages": [],
+      "total_additions": 4187,
+      "total_deletions": 228,
+      "accepted_lines": 4044,
+      "overriden_lines": 0
+    }
+  }
+}
