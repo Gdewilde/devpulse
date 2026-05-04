@@ -1,0 +1,33 @@
+DevPulse/Sources/DevPulseApp.swift
+  8d0799e3d0602969 383-386,621-646
+DevPulse/Sources/CLI.swift
+  8d0799e3d0602969 541-546,548-559
+VERSION
+  8d0799e3d0602969 1
+DevPulse/Sources/PopoverView.swift
+  8d0799e3d0602969 1695,2174
+DevPulse/Sources/BabysitSessionStore.swift
+  8d0799e3d0602969 1-168
+DevPulse/Sources/BabysitDashboardView.swift
+  8d0799e3d0602969 1-321
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "d9a908e912b236c14cd7e15e3a12f95577fde4a2",
+  "prompts": {
+    "8d0799e3d0602969": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41113d78-900a-4224-8e3b-b09b6dc874f5",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "GJ",
+      "messages": [],
+      "total_additions": 4017,
+      "total_deletions": 4258,
+      "accepted_lines": 5062,
+      "overriden_lines": 0
+    }
+  }
+}
