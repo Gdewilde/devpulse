@@ -133,6 +133,8 @@ struct AIModel {
     let tasks: [String]         // e.g. ["chat", "code", "reasoning"]
     let ollamaSlug: String?     // e.g. "llama3.1:8b"
     let websiteSlug: String?    // e.g. "llama3.1-8b"
+    var lab: String = ""        // e.g. "Meta", "Alibaba", "DeepSeek"
+    var license: String = ""    // e.g. "Apache 2.0", "Llama Community"
 
     var ollamaURL: String? {
         guard let slug = ollamaSlug else { return nil }
@@ -171,13 +173,19 @@ struct ModelCheckResult {
     let afterCleanupRAMMB: Int
 }
 
-/// Database of popular local AI models with RAM requirements.
-let aiModelDatabase: [AIModel] = [
+/// Resolved at first access from the bundled JSON or the offline fallback.
+var aiModelDatabase: [AIModel] { _aiModelDatabaseCache }
+private let _aiModelDatabaseCache: [AIModel] = ModelCatalog.load()
+
+/// Offline fallback used only when the bundle is missing models.json.
+/// Single source of truth is `devpulse-website/src/data/models.json`,
+/// copied into the app bundle by build.sh and loaded via `ModelCatalog.load()`.
+let aiModelDatabaseFallback: [AIModel] = [
     // Llama 3.x family
     AIModel(name: "Llama 3.2 3B", parameters: "3B", family: "Llama", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 2600, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 4200, quality: "high"),
-    ], tasks: ["chat", "code"], ollamaSlug: "llama3.2:3b", websiteSlug: "llama3.2-3b"),
+    ], tasks: ["chat", "code"], ollamaSlug: "llama3.2:3b", websiteSlug: "llama3.2-3b", lab: "Meta", license: "Llama Community"),
     AIModel(name: "Llama 3.1 8B", parameters: "8B", family: "Llama", quantizations: [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 5500, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 9500, quality: "high"),
@@ -211,6 +219,28 @@ let aiModelDatabase: [AIModel] = [
         AIQuantization(level: "Q4_K_M", ramRequiredMB: 20000, quality: "medium"),
         AIQuantization(level: "Q8_0", ramRequiredMB: 36000, quality: "high"),
     ], tasks: ["reasoning"], ollamaSlug: "qwq:32b", websiteSlug: nil),
+
+    // Qwen 3 family (2025+)
+    AIModel(name: "Qwen 3 4B", parameters: "4B", family: "Qwen", quantizations: [
+        AIQuantization(level: "Q4_K_M", ramRequiredMB: 3000, quality: "medium"),
+        AIQuantization(level: "Q8_0", ramRequiredMB: 5000, quality: "high"),
+    ], tasks: ["chat", "code", "reasoning"], ollamaSlug: "qwen3:4b", websiteSlug: nil),
+    AIModel(name: "Qwen 3 8B", parameters: "8B", family: "Qwen", quantizations: [
+        AIQuantization(level: "Q4_K_M", ramRequiredMB: 5500, quality: "medium"),
+        AIQuantization(level: "Q8_0", ramRequiredMB: 9500, quality: "high"),
+    ], tasks: ["chat", "code", "reasoning"], ollamaSlug: "qwen3:8b", websiteSlug: nil),
+    AIModel(name: "Qwen 3 14B", parameters: "14B", family: "Qwen", quantizations: [
+        AIQuantization(level: "Q4_K_M", ramRequiredMB: 9500, quality: "medium"),
+        AIQuantization(level: "Q8_0", ramRequiredMB: 16000, quality: "high"),
+    ], tasks: ["chat", "code", "reasoning"], ollamaSlug: "qwen3:14b", websiteSlug: nil),
+    AIModel(name: "Qwen 3 32B", parameters: "32B", family: "Qwen", quantizations: [
+        AIQuantization(level: "Q4_K_M", ramRequiredMB: 20000, quality: "medium"),
+        AIQuantization(level: "Q8_0", ramRequiredMB: 36000, quality: "high"),
+    ], tasks: ["chat", "code", "reasoning"], ollamaSlug: "qwen3:32b", websiteSlug: nil),
+    AIModel(name: "Qwen 3 30B-A3B (MoE)", parameters: "30B", family: "Qwen", quantizations: [
+        AIQuantization(level: "Q4_K_M", ramRequiredMB: 19000, quality: "medium"),
+        AIQuantization(level: "Q8_0", ramRequiredMB: 33000, quality: "high"),
+    ], tasks: ["chat", "code", "reasoning"], ollamaSlug: "qwen3:30b-a3b", websiteSlug: nil),
 
     // Mistral family
     AIModel(name: "Mistral 7B", parameters: "7B", family: "Mistral", quantizations: [

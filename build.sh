@@ -46,6 +46,20 @@ if [[ -f "$ICON_PATH" ]]; then
     cp "$ICON_PATH" "$APP_BUNDLE/Contents/Resources/"
 fi
 
+# Sync the shared model catalog from the website repo. The website's
+# src/data/models.json is the single source of truth; we copy it into
+# the app bundle so Swift can load it at launch. If the website repo
+# isn't on disk locally, fall back to whatever is already in Resources.
+WEBSITE_MODELS_JSON="$SCRIPT_DIR/../devpulse-website/src/data/models.json"
+LOCAL_MODELS_JSON="$SRC_DIR/Resources/models.json"
+if [[ -f "$WEBSITE_MODELS_JSON" ]]; then
+    cp "$WEBSITE_MODELS_JSON" "$LOCAL_MODELS_JSON"
+    echo "Synced model catalog from website repo ($(jq -r 'length' "$LOCAL_MODELS_JSON" 2>/dev/null || wc -l < "$LOCAL_MODELS_JSON") entries)"
+fi
+if [[ -f "$LOCAL_MODELS_JSON" ]]; then
+    cp "$LOCAL_MODELS_JSON" "$APP_BUNDLE/Contents/Resources/models.json"
+fi
+
 # Create Info.plist
 cat > "$APP_BUNDLE/Contents/Info.plist" << EOF
 <?xml version="1.0" encoding="UTF-8"?>

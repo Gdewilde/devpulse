@@ -42,6 +42,11 @@ struct OptimizerImpact {
 
     @Published var gpuMemory: GPUMemoryInfo? = nil
     @Published var ollamaStatus: OllamaStatus? = nil
+    @Published var ollamaPull: OllamaPullState? = nil
+    @Published var localAIRuntimes: LocalAIRuntimes = LocalAIRuntimes(
+        ollamaInstalled: false, lmStudioInstalled: false,
+        llamaCppInstalled: false, mlxInstalled: false
+    )
     @Published var aiMemoryBudget: AIMemoryBudget? = nil
     @Published var portScan: PortScanResult? = nil
     @Published var devArtifactScan: DevArtifactScan? = nil
