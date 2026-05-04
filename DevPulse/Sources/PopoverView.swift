@@ -1692,6 +1692,7 @@ struct ActionSection: View {
 
             ActionRow(icon: "chart.bar.doc.horizontal", label: "RAM Report", shortcut: "M", onAction: { onAction(.showReport) })
             ActionRow(icon: "chart.xyaxis.line", label: "Memory Timeline", shortcut: "T", onAction: { onAction(.showTimeline) })
+            ActionRow(icon: "waveform.path.ecg", label: "Babysit Dashboard", shortcut: "B", onAction: { onAction(.showBabysitDashboard) })
             ActionRow(icon: "magnifyingglass", label: "Run Full Check", shortcut: "R", onAction: { onAction(.fullCheck) })
             ActionRow(icon: "wand.and.stars", label: "Run Auto-Fix", shortcut: "F", onAction: { onAction(.autoFix) })
 
@@ -2170,6 +2171,7 @@ enum AppAction {
     case killPids([Int32])
     case showReport
     case showTimeline
+    case showBabysitDashboard
     case fullCheck
     case autoFix
     case quickClean

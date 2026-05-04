@@ -538,11 +538,26 @@ enum CLI {
         var cleanupRuns = 0
         var totalReclaimedMB = 0
 
+        // Session log: always write NDJSON to the standard path so the
+        // menu bar app's Babysit Dashboard can replay sessions, regardless
+        // of whether --json was passed for stdout.
+        let sessionLogURL = BabysitSessionStore.newSessionLogURL(startedAt: started)
+        let sessionLogHandle = BabysitSessionStore.openSessionLog(at: sessionLogURL)
+
         func emit(event: String, payload: [String: Any]) {
+            var p = payload
+            p["ts"] = ISO8601DateFormatter().string(from: Date())
+            p["event"] = event
+
+            // Always write to the session log (one NDJSON line per event).
+            if let data = try? JSONSerialization.data(withJSONObject: p, options: [.sortedKeys]),
+               let line = String(data: data, encoding: .utf8),
+               let lineData = (line + "\n").data(using: .utf8) {
+                sessionLogHandle?.write(lineData)
+            }
+
+            // Stdout: JSON or human-readable depending on flag.
             if json {
-                var p = payload
-                p["ts"] = ISO8601DateFormatter().string(from: Date())
-                p["event"] = event
                 if let data = try? JSONSerialization.data(withJSONObject: p, options: [.sortedKeys]),
                    let line = String(data: data, encoding: .utf8) {
                     print(line)

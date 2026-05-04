@@ -380,6 +380,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             popover.performClose(nil)
             showTimelinePanel()
 
+        case .showBabysitDashboard:
+            popover.performClose(nil)
+            showBabysitDashboard()
+
         case .fullCheck:
             popover.performClose(nil)
             if let scriptPath = Bundle.main.path(forResource: "mem-check", ofType: "sh") {
@@ -612,6 +616,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.appState.latestReleaseURL = htmlURL
             }
         }.resume()
+    }
+
+    // MARK: - Babysit Dashboard
+
+    private var babysitPanel: NSPanel?
+
+    private func showBabysitDashboard() {
+        if let existing = babysitPanel {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 900, height: 600),
+            styleMask: [.titled, .closable, .resizable, .miniaturizable, .utilityWindow],
+            backing: .buffered,
+            defer: false
+        )
+        panel.title = "Babysit Dashboard"
+        panel.isFloatingPanel = false
+        panel.center()
+        panel.contentView = NSHostingView(rootView: BabysitDashboardView())
+        panel.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        babysitPanel = panel
     }
 
     // MARK: - Timeline Panel
