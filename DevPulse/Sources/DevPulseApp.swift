@@ -216,6 +216,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self.appState.aiMemoryBudget = AIMemoryBudget.calculate(
                     stats: stats, gpu: gpu, ollama: ollama
                 )
+                self.appState.claudeRouting = ClaudeRoutingDetector.detect()
                 self.appState.processes = procs
                 self.appState.zombies = zombies
                 self.notifyNewZombies(zombies)

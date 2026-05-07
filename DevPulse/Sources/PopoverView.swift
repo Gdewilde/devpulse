@@ -1438,69 +1438,91 @@ struct LocalRuntimePanel: View {
     let runtimes: LocalAIRuntimes
     var onAction: (AppAction) -> Void
 
-    /// All four options, presented equally. Order: alphabetical by name to
-    /// avoid implying a preference.
-    private var options: [(name: String, url: String, installed: Bool, startCmd: String?)] {
+    private struct Option: Identifiable {
+        let name: String
+        let url: String
+        let installed: Bool
+        let startCmd: String?
+        var id: String { name }
+    }
+
+    /// Model runtimes load weights and expose local inference. Alphabetical.
+    private var modelRuntimes: [Option] {
         [
-            ("llama.cpp",  "https://github.com/ggerganov/llama.cpp", runtimes.llamaCppInstalled, nil),
-            ("LM Studio",  "https://lmstudio.ai",                   runtimes.lmStudioInstalled, "open -a 'LM Studio'"),
-            ("MLX",        "https://github.com/ml-explore/mlx",     runtimes.mlxInstalled,      nil),
-            ("Ollama",     "https://ollama.com/download",           runtimes.ollamaInstalled,   "open -a Ollama"),
+            Option(name: "llama.cpp", url: "https://github.com/ggerganov/llama.cpp", installed: runtimes.llamaCppInstalled, startCmd: nil),
+            Option(name: "LM Studio", url: "https://lmstudio.ai",                    installed: runtimes.lmStudioInstalled, startCmd: "open -a 'LM Studio'"),
+            Option(name: "MLX",       url: "https://github.com/ml-explore/mlx",      installed: runtimes.mlxInstalled,      startCmd: nil),
+            Option(name: "Ollama",    url: "https://ollama.com/download",            installed: runtimes.ollamaInstalled,   startCmd: "open -a Ollama"),
+        ]
+    }
+
+    /// Agent runtimes orchestrate multi-step tasks on top of a model runtime.
+    private var agentRuntimes: [Option] {
+        [
+            Option(name: "OpenClaw", url: "https://openclaw.ai", installed: runtimes.openclawInstalled, startCmd: "open -a OpenClaw"),
         ]
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             // Headline depends on detection state.
             HStack(spacing: 6) {
                 Image(systemName: runtimes.anyInstalled ? "play.circle" : "shippingbox")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                 Text(runtimes.anyInstalled
-                     ? "Local AI runtime detected — start it to begin"
-                     : "Run AI models locally — pick a runtime")
+                     ? "Local AI stack detected"
+                     : "Run AI locally — pick a runtime")
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
             }
 
-            // Equal grid of options. Installed ones get a "start" button;
-            // not-installed ones get a "get" link.
-            VStack(spacing: 2) {
-                ForEach(options, id: \.name) { opt in
-                    HStack(spacing: 8) {
-                        Image(systemName: opt.installed ? "checkmark.circle.fill" : "circle")
-                            .font(.system(size: 9))
-                            .foregroundStyle(opt.installed ? Color.green : Color.gray.opacity(0.5))
-                            .frame(width: 12)
-                        Text(opt.name)
-                            .font(.system(size: 11))
-                            .foregroundStyle(opt.installed ? .primary : .secondary)
-                        Spacer()
-                        if opt.installed, let cmd = opt.startCmd {
-                            Button("Start") {
-                                runShellCommand(cmd)
-                            }
-                            .buttonStyle(.borderless)
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(.blue)
-                        } else if !opt.installed {
-                            Button("Get") {
-                                onAction(.openURL(opt.url))
-                            }
-                            .buttonStyle(.borderless)
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(.blue)
-                        } else {
-                            Text("installed")
-                                .font(.system(size: 9))
-                                .foregroundStyle(.tertiary)
+            tier(title: "Model runtimes", options: modelRuntimes)
+            tier(title: "Agent runtimes", options: agentRuntimes)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+    }
+
+    @ViewBuilder
+    private func tier(title: String, options: [Option]) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(.tertiary)
+                .textCase(.uppercase)
+            ForEach(options) { opt in
+                HStack(spacing: 8) {
+                    Image(systemName: opt.installed ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 9))
+                        .foregroundStyle(opt.installed ? Color.green : Color.gray.opacity(0.5))
+                        .frame(width: 12)
+                    Text(opt.name)
+                        .font(.system(size: 11))
+                        .foregroundStyle(opt.installed ? .primary : .secondary)
+                    Spacer()
+                    if opt.installed, let cmd = opt.startCmd {
+                        Button("Start") {
+                            runShellCommand(cmd)
                         }
+                        .buttonStyle(.borderless)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.blue)
+                    } else if !opt.installed {
+                        Button("Get") {
+                            onAction(.openURL(opt.url))
+                        }
+                        .buttonStyle(.borderless)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.blue)
+                    } else {
+                        Text("installed")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.tertiary)
                     }
                 }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 6)
     }
 
     private func runShellCommand(_ cmd: String) {
@@ -2551,25 +2573,47 @@ struct RoutingPostureRow: View {
     private let referenceModelMB = 20_000
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            Circle()
-                .fill(verdict.color)
-                .frame(width: 8, height: 8)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .center, spacing: 10) {
+                Circle()
+                    .fill(verdict.color)
+                    .frame(width: 8, height: 8)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Hybrid routing")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-                Text(verdict.label)
-                    .font(.system(size: 13, weight: .medium))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Hybrid routing")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+                    Text(verdict.label)
+                        .font(.system(size: 13, weight: .medium))
+                }
+
+                Spacer()
+
+                Text(verdict.suggestion)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.tertiary)
             }
 
-            Spacer()
-
-            Text(verdict.suggestion)
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(.tertiary)
+            if let routing = state.claudeRouting {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.triangle.branch")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                    Text("Claude Code → \(routing.backend.rawValue)")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    if let src = routing.source {
+                        Text("(\(src))")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    Spacer()
+                }
+                .padding(.leading, 18)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

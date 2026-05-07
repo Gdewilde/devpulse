@@ -45,9 +45,11 @@ struct OptimizerImpact {
     @Published var ollamaPull: OllamaPullState? = nil
     @Published var localAIRuntimes: LocalAIRuntimes = LocalAIRuntimes(
         ollamaInstalled: false, lmStudioInstalled: false,
-        llamaCppInstalled: false, mlxInstalled: false
+        llamaCppInstalled: false, mlxInstalled: false,
+        openclawInstalled: false
     )
     @Published var aiMemoryBudget: AIMemoryBudget? = nil
+    @Published var claudeRouting: ClaudeRouting? = nil
     @Published var portScan: PortScanResult? = nil
     @Published var devArtifactScan: DevArtifactScan? = nil
     @Published var appRecommendations: [AppRecommendation] = []
