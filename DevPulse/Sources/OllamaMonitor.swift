@@ -122,14 +122,17 @@ struct LoadedModel {
 
 /// What local AI runtimes are installed on this machine.
 /// Detection is presentation-neutral: we list them so users can pick.
+/// Split into two tiers: model runtimes (load weights, expose inference) and
+/// agent runtimes (orchestrate calls into model runtimes).
 struct LocalAIRuntimes {
     let ollamaInstalled: Bool
     let lmStudioInstalled: Bool
     let llamaCppInstalled: Bool
     let mlxInstalled: Bool
+    let openclawInstalled: Bool
 
     var anyInstalled: Bool {
-        ollamaInstalled || lmStudioInstalled || llamaCppInstalled || mlxInstalled
+        ollamaInstalled || lmStudioInstalled || llamaCppInstalled || mlxInstalled || openclawInstalled
     }
 
     static func detect() -> LocalAIRuntimes {
@@ -146,11 +149,18 @@ struct LocalAIRuntimes {
         // MLX is a Python package; detecting it without launching python is unreliable.
         // Skip for now; user can install via pip and we won't claim presence.
         let mlx = false
+        // OpenClaw installs via npm global (any of the standard prefixes) or
+        // ships a menu-bar companion app.
+        let openclaw = fm.fileExists(atPath: "/Applications/OpenClaw.app") ||
+                       fm.fileExists(atPath: "/usr/local/bin/openclaw") ||
+                       fm.fileExists(atPath: "/opt/homebrew/bin/openclaw") ||
+                       fm.fileExists(atPath: NSHomeDirectory() + "/.npm-global/bin/openclaw")
         return LocalAIRuntimes(
             ollamaInstalled: ollama,
             lmStudioInstalled: lmStudio,
             llamaCppInstalled: llamaCpp,
-            mlxInstalled: mlx
+            mlxInstalled: mlx,
+            openclawInstalled: openclaw
         )
     }
 }
