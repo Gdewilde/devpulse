@@ -1,0 +1,44 @@
+DevPulse/Sources/OllamaMonitor.swift
+  1b803ba7538ccc7b 125-126,132,135,152-157,162-163
+DevPulse/Sources/AppState.swift
+  1b803ba7538ccc7b 48-49
+  s_82d8cec8b0e193::t_e5c6ef3ed8177c 52
+DevPulse/Sources/ClaudeRoutingDetector.swift
+  s_82d8cec8b0e193::t_192c49e47499cd 1-76
+DevPulse/Sources/DevPulseApp.swift
+  s_82d8cec8b0e193::t_4619aaf1006ea8 219
+DevPulse/Sources/PopoverView.swift
+  s_82d8cec8b0e193::t_5ab2b2cd568a1f 2576-2589,2591,2593-2596,2598-2616
+  1b803ba7538ccc7b 1441-1450,1452-1462,1467,1474-1475,1480-1506,1508-1521
+VERSION
+  s_82d8cec8b0e193::t_358ebcc3a0579e 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "b032b46b2a407d54f7b3af458dc979d13dd3223d",
+  "prompts": {
+    "1b803ba7538ccc7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63afd24b-3308-460a-9213-92393b53e071",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "GJ <info@gertjandewilde.com>",
+      "total_additions": 79,
+      "total_deletions": 46,
+      "accepted_lines": 79,
+      "overriden_lines": 0
+    }
+  },
+  "sessions": {
+    "s_82d8cec8b0e193": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f56133de-7de8-4720-bce6-308fce762c09",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "GJ <info@gertjandewilde.com>"
+    }
+  }
+}
